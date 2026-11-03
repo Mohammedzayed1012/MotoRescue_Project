@@ -1,0 +1,108 @@
+<div class="app-shell">
+  @if (menuOpen()) {
+    <button
+      type="button"
+      class="shell-backdrop"
+      aria-label="Close navigation"
+      (click)="menuOpen.set(false)"
+    ></button>
+  }
+
+  <aside class="sidebar" [class.sidebar--open]="menuOpen()" aria-label="Workspace navigation">
+    <div class="sidebar__top">
+      <a routerLink="/" class="sidebar__brand" aria-label="MotoRescue home">
+        <app-logo size="sm" />
+      </a>
+      <span class="role-chip">{{ roleLabel() }}</span>
+    </div>
+
+    <nav class="sidebar__nav">
+      @for (item of nav(); track item.key) {
+        <button
+          type="button"
+          class="nav-item"
+          [class.nav-item--active]="active() === item.key"
+          [attr.aria-current]="active() === item.key ? 'page' : null"
+          (click)="select(item.key)"
+        >
+          <app-icon [name]="item.icon" [size]="19" />
+          <span>{{ item.label }}</span>
+          @if (item.badge) {
+            <span class="nav-item__badge">{{ item.badge }}</span>
+          }
+        </button>
+      }
+    </nav>
+
+    <div class="sidebar__support">
+      <span class="sidebar__support-icon"><app-icon name="headset" [size]="18" /></span>
+      <div>
+        <strong>Need a hand?</strong>
+        <p>Our rescue desk is open 24/7.</p>
+        <a href="tel:+918000000000">+91 80000 00000</a>
+      </div>
+    </div>
+
+    <div class="sidebar__user">
+      <span class="avatar avatar--brand">{{ initials() }}</span>
+      <div class="sidebar__user-meta">
+        <strong>{{ auth.user()?.fullName }}</strong>
+        <span>{{ email() }}</span>
+      </div>
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="logout()"
+        aria-label="Log out"
+        title="Log out"
+      >
+        <app-icon name="logout" [size]="18" />
+      </button>
+    </div>
+
+    @if (isDemo()) {
+      <p class="demo-note">
+        <app-icon name="sparkles" [size]="13" />
+        Demo workspace · sample data
+      </p>
+    }
+  </aside>
+
+  <div class="shell-main">
+    <header class="topbar">
+      <button
+        type="button"
+        class="menu-btn"
+        (click)="menuOpen.set(true)"
+        aria-label="Open navigation"
+      >
+        <app-icon name="menu" [size]="21" />
+      </button>
+
+      <div class="topbar__title">
+        <span class="topbar__eyebrow">{{ roleLabel() }}</span>
+        <h1>{{ title() }}</h1>
+        @if (subtitle()) {
+          <p>{{ subtitle() }}</p>
+        }
+      </div>
+
+      <div class="topbar__actions">
+        <div class="topbar__slot">
+          <ng-content select="[shellActions]" />
+        </div>
+
+        <button type="button" class="icon-btn notification-btn" (click)="notify()" aria-label="Notifications">
+          <app-icon name="bell" [size]="19" />
+          <span class="notification-dot"></span>
+        </button>
+
+        <span class="topbar__avatar avatar avatar--brand">{{ initials() }}</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <ng-content />
+    </main>
+  </div>
+</div>

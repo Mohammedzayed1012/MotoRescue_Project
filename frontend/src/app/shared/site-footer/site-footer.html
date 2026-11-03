@@ -1,0 +1,50 @@
+<footer class="site-footer" id="contact">
+  <div class="container footer-top">
+    <div class="footer-brand">
+      <a routerLink="/" aria-label="MotoRescue home"><app-logo variant="light" /></a>
+      <p>24/7 motorcycle roadside assistance. Verified mechanics, upfront pricing, and live tracking — so a breakdown never ruins your day.</p>
+      <a class="hotline" href="tel:+918000000000">
+        <span class="hotline__icon"><app-icon name="phone" [size]="18" /></span>
+        <span>
+          <small>24/7 rescue hotline</small>
+          <strong>+91 80000 00000</strong>
+        </span>
+      </a>
+    </div>
+
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h3>Ride with us</h3>
+        <a routerLink="/" fragment="how">How it works</a>
+        <a routerLink="/" fragment="services">Services</a>
+        <a routerLink="/" fragment="pricing">Pricing</a>
+        <a routerLink="/" fragment="support">Help centre</a>
+      </div>
+
+      <div class="footer-col">
+        <h3>Company</h3>
+        <a routerLink="/" fragment="about">About us</a>
+        <a routerLink="/" fragment="reviews">Rider stories</a>
+        <a routerLink="/" fragment="support">Contact</a>
+        <a routerLink="/" fragment="coverage">Coverage</a>
+      </div>
+
+      <div class="footer-col">
+        <h3>For mechanics</h3>
+        <a routerLink="/register" [queryParams]="{ role: 'mechanic' }">Join as a mechanic</a>
+        <a routerLink="/login">Mechanic login</a>
+        <a routerLink="/" fragment="how">How payouts work</a>
+        <a routerLink="/" fragment="support">Safety standards</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="container footer-bottom">
+    <p>© 2026 MotoRescue Technologies. All rights reserved.</p>
+    <div class="footer-legal">
+      <a routerLink="/" fragment="support">Privacy</a>
+      <a routerLink="/" fragment="support">Terms</a>
+      <span class="footer-status"><span class="dot"></span> All systems operational</span>
+    </div>
+  </div>
+</footer>

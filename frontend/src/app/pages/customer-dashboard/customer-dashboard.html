@@ -1,0 +1,628 @@
+<app-dashboard-shell
+  [nav]="navItems"
+  [active]="activeTab()"
+  [title]="pageTitle()"
+  [subtitle]="pageSubtitle()"
+  roleLabel="Rider workspace"
+  (activeChange)="setTab($event)"
+>
+  @if (activeTab() !== 'request') {
+    <button shellActions type="button" class="btn btn-primary btn-sm" (click)="setTab('request')">
+      <app-icon name="zap" [size]="16" />
+      Request rescue
+    </button>
+  }
+
+  @switch (activeTab()) {
+    <!-- Overview ----------------------------------------------------------->
+    @case ('overview') {
+      <div class="dash-grid">
+        <div class="dash-main">
+          @if (request(); as active) {
+            <section class="card rescue-card">
+              <div class="rescue-card__head">
+                <div class="rescue-card__title">
+                  <span class="rescue-card__icon">
+                    <app-icon [name]="$any(active.icon)" [size]="22" />
+                  </span>
+                  <div>
+                    <span
+                      class="badge"
+                      [class.badge--brand]="requestStatus().tone === 'brand'"
+                      [class.badge--amber]="requestStatus().tone === 'amber'"
+                      [class.badge--blue]="requestStatus().tone === 'blue'"
+                      [class.badge--green]="requestStatus().tone === 'green'"
+                    >
+                      <span class="dot"></span>
+                      {{ requestStatus().label }}
+                    </span>
+                    <h2>{{ active.service }}</h2>
+                    <p>{{ active.bike }} · {{ active.location }}</p>
+                  </div>
+                </div>
+
+                <div class="rescue-card__eta">
+                  <strong>{{ active.eta }}</strong>
+                  <span>ETA</span>
+                </div>
+              </div>
+
+              @if (active.status === 'searching') {
+                <div class="searching">
+                  <span class="spinner spinner--dark"></span>
+                  <div>
+                    <strong>Finding the closest verified mechanic…</strong>
+                    <p>We usually match a partner in under two minutes.</p>
+                  </div>
+                </div>
+              } @else if (active.mechanic) {
+                <div class="mechanic-row">
+                  <span
+                    class="avatar avatar--lg"
+                    [class.avatar--brand]="active.mechanic.tone === 'brand'"
+                    [class.avatar--green]="active.mechanic.tone === 'green'"
+                    [class.avatar--blue]="active.mechanic.tone === 'blue'"
+                  >
+                    {{ active.mechanic.initials }}
+                  </span>
+                  <div class="mechanic-row__info">
+                    <strong>{{ active.mechanic.name }}</strong>
+                    <span>
+                      ★ {{ active.mechanic.rating }} · {{ active.mechanic.jobs }} rescues ·
+                      {{ active.mechanic.distance }} away
+                    </span>
+                    <span class="verified-tag">
+                      <app-icon name="shield" [size]="12" />
+                      Verified partner
+                    </span>
+                  </div>
+                  <div class="mechanic-row__actions">
+                    <a class="icon-btn icon-btn--brand" href="tel:+918000000000" aria-label="Call your mechanic">
+                      <app-icon name="phone" [size]="18" />
+                    </a>
+                    <a class="icon-btn" href="sms:+918000000000" aria-label="Message your mechanic">
+                      <app-icon name="message" [size]="18" />
+                    </a>
+                  </div>
+                </div>
+              }
+
+              <div class="timeline">
+                @for (step of timeline; track step.label; let i = $index) {
+                  <div
+                    class="timeline__step"
+                    [class.is-complete]="i < activeStep()"
+                    [class.is-active]="i === activeStep()"
+                  >
+                    <span class="timeline__dot">
+                      @if (i < activeStep()) {
+                        <app-icon name="check" [size]="13" />
+                      } @else {
+                        {{ i + 1 }}
+                      }
+                    </span>
+                    <div class="timeline__copy">
+                      <strong>{{ step.label }}</strong>
+                      <span>{{ step.hint }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <div class="rescue-card__foot">
+                <div>
+                  <span class="rescue-card__price-label">Approved quote</span>
+                  <strong class="rescue-card__price">{{ active.price }}</strong>
+                </div>
+                <div class="rescue-card__actions">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="cancelRequest()">
+                    Cancel request
+                  </button>
+                  <a class="btn btn-primary btn-sm" href="tel:+918000000000">
+                    <app-icon name="phone" [size]="15" />
+                    Call mechanic
+                  </a>
+                </div>
+              </div>
+            </section>
+          } @else {
+            <section class="card empty-rescue">
+              <span class="empty-rescue__icon"><app-icon name="headset" [size]="26" /></span>
+              <div>
+                <span class="badge badge--green"><span class="dot"></span>Rescue desk online</span>
+                <h2>No active rescue</h2>
+                <p>
+                  When your bike stops, we are already nearby. Request a verified
+                  mechanic and we will take it from there.
+                </p>
+                <button type="button" class="btn btn-primary" (click)="setTab('request')">
+                  Request a mechanic
+                  <app-icon name="arrow-right" [size]="16" />
+                </button>
+              </div>
+            </section>
+          }
+
+          <div class="quick-actions">
+            <button type="button" class="quick" (click)="setTab('request')">
+              <span class="quick__icon"><app-icon name="zap" [size]="19" /></span>
+              <span class="quick__copy">
+                <strong>Request help</strong>
+                <small>Average 18 min arrival</small>
+              </span>
+              <app-icon name="chevron-right" [size]="16" />
+            </button>
+
+            <button type="button" class="quick" (click)="setTab('bikes')">
+              <span class="quick__icon"><app-icon name="bike" [size]="19" /></span>
+              <span class="quick__copy">
+                <strong>My garage</strong>
+                <small>{{ bikes().length }} bike{{ bikes().length === 1 ? '' : 's' }} added</small>
+              </span>
+              <app-icon name="chevron-right" [size]="16" />
+            </button>
+
+            <button type="button" class="quick" (click)="callSupport()">
+              <span class="quick__icon"><app-icon name="phone" [size]="19" /></span>
+              <span class="quick__copy">
+                <strong>Rescue desk</strong>
+                <small>24/7 human support</small>
+              </span>
+              <app-icon name="chevron-right" [size]="16" />
+            </button>
+          </div>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h3>Recent rescues</h3>
+                <p class="card-head__sub">Your last three jobs and receipts</p>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="setTab('history')">
+                View all
+                <app-icon name="arrow-right" [size]="15" />
+              </button>
+            </div>
+
+            @if (recentHistory().length) {
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Service</th>
+                      <th>Mechanic</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (entry of recentHistory(); track entry.id) {
+                      <tr>
+                        <td>{{ entry.date }}</td>
+                        <td><strong>{{ entry.service }}</strong></td>
+                        <td>{{ entry.mechanic }}</td>
+                        <td>{{ entry.amount }}</td>
+                        <td>
+                          <span class="badge badge--green">{{ entry.status }}</span>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <app-icon name="history" [size]="24" />
+                <h3>No rescues yet</h3>
+                <p>Your completed jobs, receipts, and ratings will appear here.</p>
+              </div>
+            }
+          </section>
+        </div>
+
+        <aside class="dash-side">
+          <section class="card map-card">
+            <div class="card-head">
+              <h3>Live coverage</h3>
+              <span class="badge badge--green"><span class="dot"></span>142 online</span>
+            </div>
+            <div class="map-card__map">
+              <app-map-preview badge="Your area" [eta]="''" />
+            </div>
+            <div class="map-card__foot">
+              <span class="map-card__pin"><app-icon name="pin" [size]="15" /></span>
+              <div>
+                <strong>{{ primaryBike()?.name ?? 'Add your first bike' }}</strong>
+                <span>{{ primaryBike()?.regNo ?? 'Faster matching with saved details' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h3>Mechanics near you</h3>
+              <span class="badge badge--neutral">Live</span>
+            </div>
+            <ul class="mechanics">
+              @for (mechanic of mechanics; track mechanic.id) {
+                <li>
+                  <span
+                    class="avatar avatar--sm"
+                    [class.avatar--brand]="mechanic.tone === 'brand'"
+                    [class.avatar--green]="mechanic.tone === 'green'"
+                    [class.avatar--blue]="mechanic.tone === 'blue'"
+                  >
+                    {{ mechanic.initials }}
+                  </span>
+                  <div class="mechanics__copy">
+                    <strong>{{ mechanic.name }}</strong>
+                    <span>★ {{ mechanic.rating }} · {{ mechanic.specialty }}</span>
+                  </div>
+                  <span class="mechanics__distance">{{ mechanic.distance }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="plan-card">
+            <span class="badge badge--brand">Rescue+</span>
+            <h3>One tow pays for the whole year.</h3>
+            <p>Priority dispatch, two free tows, and 10% off every repair.</p>
+            <button type="button" class="btn btn-soft btn-block" (click)="upgrade()">
+              Upgrade for ₹99/month
+            </button>
+          </section>
+        </aside>
+      </div>
+    }
+
+    <!-- Request ------------------------------------------------------------>
+    @case ('request') {
+      <div class="request-layout">
+        <section class="card request-card">
+          <div class="card-head">
+            <div>
+              <h3>Rescue details</h3>
+              <p class="card-head__sub">Accurate details help us match you faster.</p>
+            </div>
+            <span class="badge badge--green"><span class="dot"></span>Avg 18 min</span>
+          </div>
+
+          <form class="request-form" [formGroup]="requestForm" (ngSubmit)="submitRequest()" novalidate>
+            <div class="field">
+              <label class="label" for="service">What is wrong with the bike?</label>
+              <select id="service" class="select" formControlName="service">
+                @for (option of serviceOptions; track option.id) {
+                  <option [value]="option.id">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="bike">Which bike?</label>
+                <select id="bike" class="select" formControlName="bike">
+                  @for (bike of bikes(); track bike.id) {
+                    <option [value]="bike.name + ' · ' + bike.regNo">
+                      {{ bike.name }} · {{ bike.regNo }}
+                    </option>
+                  }
+                  <option value="Other bike">Other bike</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="label" for="location">Where are you?</label>
+                <input
+                  id="location"
+                  class="input"
+                  type="text"
+                  formControlName="location"
+                  placeholder="Area, landmark, or map pin"
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="notes">Anything else? <span class="label__optional">Optional</span></label>
+              <textarea
+                id="notes"
+                class="textarea"
+                formControlName="notes"
+                rows="3"
+                placeholder="For example: rear tyre is flat, I am near the Forum mall underpass."
+              ></textarea>
+            </div>
+
+            <div class="quote-preview">
+              <div>
+                <span>Estimated starting price</span>
+                <strong>{{ selectedService().id === 'tow' ? '₹499' : '₹149' }}</strong>
+              </div>
+              <p>Final quote confirmed before dispatch. You approve it first.</p>
+            </div>
+
+            <div class="request-form__foot">
+              <span class="request-form__secure">
+                <app-icon name="shield" [size]="15" />
+                No payment until the job is done
+              </span>
+              <button type="submit" class="btn btn-primary btn-lg" [disabled]="requesting()">
+                @if (requesting()) {
+                  <span class="spinner"></span>
+                  Finding a mechanic…
+                } @else {
+                  Request a mechanic
+                  <app-icon name="arrow-right" [size]="17" />
+                }
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="request-side">
+          <section class="card card-pad">
+            <span class="eyebrow eyebrow--plain">What happens next</span>
+            <ol class="next-steps">
+              <li>
+                <span>1</span>
+                <div><strong>We match the closest partner</strong><p>Usually within two minutes.</p></div>
+              </li>
+              <li>
+                <span>2</span>
+                <div><strong>You approve the quote</strong><p>No work starts without your yes.</p></div>
+              </li>
+              <li>
+                <span>3</span>
+                <div><strong>Track them live</strong><p>Name, rating, and ETA on your map.</p></div>
+              </li>
+              <li>
+                <span>4</span>
+                <div><strong>Pay after the repair</strong><p>Receipt and rating in the app.</p></div>
+              </li>
+            </ol>
+          </section>
+
+          <div class="safety-note">
+            <app-icon name="alert" [size]="18" />
+            <div>
+              <strong>Stay safe while you wait</strong>
+              <p>Move off the carriageway, switch on hazard lights, and stay visible.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    }
+
+    <!-- Bikes -------------------------------------------------------------->
+    @case ('bikes') {
+      <div class="page-actions">
+        <div>
+          <h2>Your garage</h2>
+          <p>Saved bikes make requests faster and quotes more accurate.</p>
+        </div>
+        <button type="button" class="btn btn-primary" (click)="addBikeOpen.set(!addBikeOpen())">
+          <app-icon name="plus" [size]="16" />
+          Add a bike
+        </button>
+      </div>
+
+      @if (addBikeOpen()) {
+        <section class="card card-pad add-bike">
+          <div class="add-bike__head">
+            <div>
+              <h3>Add a bike</h3>
+              <p>We only need the basics. You can edit these later.</p>
+            </div>
+            <button type="button" class="icon-btn" (click)="addBikeOpen.set(false)" aria-label="Close add bike form">
+              <app-icon name="close" [size]="17" />
+            </button>
+          </div>
+
+          <form class="add-bike__form" [formGroup]="addBikeForm" (ngSubmit)="addBike()" novalidate>
+            <div class="field">
+              <label class="label" for="bikeName">Bike model</label>
+              <input id="bikeName" class="input" formControlName="name" placeholder="e.g. Royal Enfield Hunter 350" />
+            </div>
+            <div class="field">
+              <label class="label" for="bikeReg">Registration</label>
+              <input id="bikeReg" class="input" formControlName="regNo" placeholder="KA 05 AB 1234" />
+            </div>
+            <div class="field">
+              <label class="label" for="bikeYear">Year</label>
+              <input id="bikeYear" class="input" formControlName="year" placeholder="2023" inputmode="numeric" />
+            </div>
+            <button type="submit" class="btn btn-dark">Save bike</button>
+          </form>
+        </section>
+      }
+
+      <div class="bike-grid">
+        @for (bike of bikes(); track bike.id; let i = $index) {
+          <article class="card bike-card">
+            <div class="bike-card__head">
+              <span
+                class="bike-card__icon"
+                [class.bike-card__icon--brand]="bike.tone === 'brand'"
+                [class.bike-card__icon--green]="bike.tone === 'green'"
+                [class.bike-card__icon--blue]="bike.tone === 'blue'"
+              >
+                <app-icon name="bike" [size]="24" />
+              </span>
+              @if (i === 0) {
+                <span class="badge badge--brand">Primary</span>
+              }
+            </div>
+            <h3>{{ bike.name }}</h3>
+            <span class="bike-card__reg">{{ bike.regNo }}</span>
+
+            <dl class="bike-card__meta">
+              <div><dt>Year</dt><dd>{{ bike.year }}</dd></div>
+              <div><dt>Odometer</dt><dd>{{ bike.odometer }}</dd></div>
+            </dl>
+
+            <div class="bike-card__actions">
+              @if (i > 0) {
+                <button type="button" class="btn btn-ghost btn-sm" (click)="makePrimary(bike)">
+                  Make primary
+                </button>
+              }
+              <button type="button" class="btn btn-danger-soft btn-sm" (click)="removeBike(bike)">
+                Remove
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <div class="card empty-state bike-empty">
+            <app-icon name="bike" [size]="26" />
+            <h3>No bikes saved yet</h3>
+            <p>Add your bike so we can pre-fill requests and keep its service history together.</p>
+            <button type="button" class="btn btn-primary btn-sm" (click)="addBikeOpen.set(true)">
+              Add your first bike
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- History ------------------------------------------------------------>
+    @case ('history') {
+      <div class="page-actions">
+        <div>
+          <h2>Every rescue, on record</h2>
+          <p>Downloadable receipts and ratings for all completed jobs.</p>
+        </div>
+        <div class="history-search">
+          <app-icon name="search" [size]="16" />
+          <input
+            type="search"
+            placeholder="Search service or mechanic"
+            aria-label="Search rescue history"
+            (input)="historyQuery.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+
+      <section class="card">
+        @if (filteredHistory().length) {
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Date</th>
+                  <th>Service</th>
+                  <th>Mechanic</th>
+                  <th>Bike</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (entry of filteredHistory(); track entry.id) {
+                  <tr>
+                    <td><strong>{{ entry.id }}</strong></td>
+                    <td>{{ entry.date }}</td>
+                    <td>{{ entry.service }}</td>
+                    <td>{{ entry.mechanic }}</td>
+                    <td>{{ entry.bike }}</td>
+                    <td>{{ entry.amount }}</td>
+                    <td><span class="badge badge--green">{{ entry.status }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <app-icon name="history" [size]="24" />
+            <h3>Nothing matches that search</h3>
+            <p>Try a different service name or mechanic, or clear the search to see all rescues.</p>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Profile ------------------------------------------------------------>
+    @case ('profile') {
+      <div class="profile-grid">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h3>Personal details</h3>
+              <p class="card-head__sub">Used to reach you during a rescue.</p>
+            </div>
+          </div>
+
+          <form class="profile-form card-pad" [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+            <div class="profile-identity">
+              <span class="avatar avatar--lg">{{ auth.user()?.fullName?.charAt(0) }}</span>
+              <div>
+                <strong>{{ auth.user()?.fullName }}</strong>
+                <span>Rider account · {{ isDemo() ? 'Demo workspace' : 'Verified email' }}</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="profileName">Full name</label>
+              <input id="profileName" class="input" formControlName="fullName" autocomplete="name" />
+            </div>
+
+            <div class="field">
+              <label class="label" for="profileEmail">Email address</label>
+              <input id="profileEmail" class="input" formControlName="email" type="email" />
+              <span class="hint">Contact support to change the email on your account.</span>
+            </div>
+
+            <div class="field">
+              <label class="label" for="profilePhone">Mobile number</label>
+              <input id="profilePhone" class="input" formControlName="phone" type="tel" autocomplete="tel" />
+            </div>
+
+            <div class="pref-list">
+              <label class="pref">
+                <span>
+                  <strong>Rescue SMS updates</strong>
+                  <small>Mechanic name, ETA, and arrival alerts by text.</small>
+                </span>
+                <input type="checkbox" formControlName="smsUpdates" />
+                <span class="pref__track" aria-hidden="true"><span></span></span>
+              </label>
+
+              <label class="pref">
+                <span>
+                  <strong>Email receipts</strong>
+                  <small>A copy of every invoice sent to your inbox.</small>
+                </span>
+                <input type="checkbox" formControlName="emailReceipts" />
+                <span class="pref__track" aria-hidden="true"><span></span></span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save changes</button>
+          </form>
+        </section>
+
+        <aside class="profile-side">
+          <section class="card card-pad">
+            <span class="badge badge--neutral">Account</span>
+            <h3 class="profile-side__title">Rider workspace</h3>
+            <dl class="profile-meta">
+              <div><dt>Plan</dt><dd>Pay as you go</dd></div>
+              <div><dt>Member since</dt><dd>Jan 2026</dd></div>
+              <div><dt>Account status</dt><dd><span class="badge badge--green">Active</span></dd></div>
+            </dl>
+          </section>
+
+          <section class="card card-pad support-mini">
+            <span class="support-mini__icon"><app-icon name="headset" [size]="20" /></span>
+            <h3>Need to change something?</h3>
+            <p>Our team can update your email, close your account, or help with a receipt.</p>
+            <a class="btn btn-outline btn-sm" href="mailto:support@motorescue.com">Contact support</a>
+          </section>
+        </aside>
+      </div>
+    }
+  }
+</app-dashboard-shell>

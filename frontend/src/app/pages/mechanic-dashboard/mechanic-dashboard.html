@@ -1,0 +1,525 @@
+<app-dashboard-shell
+  [nav]="navItems()"
+  [active]="activeTab()"
+  [title]="pageTitle()"
+  [subtitle]="pageSubtitle()"
+  roleLabel="Mechanic workspace"
+  (activeChange)="setTab($event)"
+>
+  <button
+    shellActions
+    type="button"
+    class="availability-pill"
+    [class.availability-pill--on]="online()"
+    role="switch"
+    [attr.aria-checked]="online()"
+    (click)="toggleOnline()"
+  >
+    <span class="dot"></span>
+    {{ online() ? 'Online' : 'Offline' }}
+  </button>
+
+  @switch (activeTab()) {
+    <!-- Overview ----------------------------------------------------------->
+    @case ('overview') {
+      <div class="stat-row">
+        <article class="stat">
+          <span class="stat__icon stat__icon--green"><app-icon name="wallet" [size]="18" /></span>
+          <div>
+            <span class="stat__label">Today's earnings</span>
+            <strong>₹{{ earningsToday() }}</strong>
+            <small class="stat__trend">+18% vs yesterday</small>
+          </div>
+        </article>
+
+        <article class="stat">
+          <span class="stat__icon"><app-icon name="check" [size]="18" /></span>
+          <div>
+            <span class="stat__label">Jobs completed</span>
+            <strong>{{ jobsToday() }}</strong>
+            <small>Today</small>
+          </div>
+        </article>
+
+        <article class="stat">
+          <span class="stat__icon stat__icon--amber"><app-icon name="star" [size]="18" /></span>
+          <div>
+            <span class="stat__label">Rider rating</span>
+            <strong>4.9</strong>
+            <small>1,284 reviews</small>
+          </div>
+        </article>
+
+        <article class="stat">
+          <span class="stat__icon stat__icon--blue"><app-icon name="activity" [size]="18" /></span>
+          <div>
+            <span class="stat__label">Acceptance rate</span>
+            <strong>96%</strong>
+            <small>Last 30 days</small>
+          </div>
+        </article>
+      </div>
+
+      <div class="mech-grid">
+        <div class="mech-main">
+          @if (online()) {
+            @if (incoming(); as job) {
+              <section class="card incoming">
+                <div class="incoming__head">
+                  <span class="badge badge--brand"><span class="dot"></span>New request</span>
+                  <span class="incoming__timer">
+                    <app-icon name="timer" [size]="14" />
+                    Respond within 2:00
+                  </span>
+                </div>
+
+                <div class="incoming__service">
+                  <span class="incoming__icon"><app-icon [name]="job.icon" [size]="23" /></span>
+                  <div class="incoming__copy">
+                    <h2>{{ job.service }}</h2>
+                    <p>{{ job.vehicle }}</p>
+                  </div>
+                  <div class="incoming__payout">
+                    <strong>₹{{ job.payout }}</strong>
+                    <span>your payout</span>
+                  </div>
+                </div>
+
+                <div class="incoming__grid">
+                  <div><span>Customer</span><strong>{{ job.customer }}</strong></div>
+                  <div><span>Distance</span><strong>{{ job.distance }} · ~{{ job.eta }}</strong></div>
+                  <div><span>Request</span><strong>#{{ job.id }}</strong></div>
+                </div>
+
+                <p class="incoming__note">
+                  <app-icon name="message" [size]="15" />
+                  “{{ job.note }}”
+                </p>
+
+                <div class="incoming__actions">
+                  <button type="button" class="btn btn-outline" (click)="declineJob()">Decline</button>
+                  <button type="button" class="btn btn-primary" (click)="acceptJob()">
+                    <app-icon name="check" [size]="16" />
+                    Accept job
+                  </button>
+                </div>
+              </section>
+            } @else {
+              <section class="waiting">
+                <span class="waiting__radar" aria-hidden="true"><span></span></span>
+                <div>
+                  <span class="badge badge--green"><span class="dot"></span>Online</span>
+                  <h2>Waiting for a nearby request</h2>
+                  <p>
+                    You are at the front of the queue. New jobs within 12 km will
+                    appear here with the payout shown upfront.
+                  </p>
+                </div>
+              </section>
+            }
+          } @else {
+            <section class="offline-card">
+              <span class="offline-card__icon"><app-icon name="clock" [size]="24" /></span>
+              <div>
+                <h2>You are offline</h2>
+                <p>Go online when you are ready to take jobs. Riders cannot book you while you are paused.</p>
+              </div>
+              <button type="button" class="btn btn-primary" (click)="toggleOnline()">Go online</button>
+            </section>
+          }
+
+          @if (active(); as job) {
+            <section class="card active-job">
+              <div class="active-job__head">
+                <span class="badge" [class.badge--brand]="job.status === 'en_route'" [class.badge--green]="job.status === 'arrived'">
+                  <span class="dot"></span>
+                  {{ job.status === 'en_route' ? 'On the way' : 'At the location' }}
+                </span>
+                <span class="active-job__id">#{{ job.id }}</span>
+              </div>
+
+              <div class="active-job__service">
+                <span class="active-job__icon"><app-icon [name]="job.icon" [size]="23" /></span>
+                <div>
+                  <h2>{{ job.service }}</h2>
+                  <p>{{ job.vehicle }}</p>
+                </div>
+                <div class="active-job__eta">
+                  <strong>{{ job.status === 'en_route' ? job.eta : 'Now' }}</strong>
+                  <span>{{ job.status === 'en_route' ? 'ETA' : 'On site' }}</span>
+                </div>
+              </div>
+
+              <div class="active-job__customer">
+                <span class="avatar avatar--brand">{{ job.initials }}</span>
+                <div>
+                  <strong>{{ job.customer }}</strong>
+                  <span>{{ job.distance }} away · {{ job.note }}</span>
+                </div>
+                <div class="active-job__contact">
+                  <a class="icon-btn icon-btn--brand" href="tel:+918000000000" aria-label="Call the rider">
+                    <app-icon name="phone" [size]="18" />
+                  </a>
+                  <a class="icon-btn" href="sms:+918000000000" aria-label="Message the rider">
+                    <app-icon name="message" [size]="18" />
+                  </a>
+                </div>
+              </div>
+
+              <div class="active-job__meta">
+                <div><span>Payout</span><strong>₹{{ job.payout }}</strong></div>
+                <div><span>Distance</span><strong>{{ job.distance }}</strong></div>
+                <div><span>Payment</span><strong>On completion</strong></div>
+              </div>
+
+              <div class="active-job__actions">
+                <a class="btn btn-ghost btn-sm" href="tel:+918000000000">Call rider</a>
+                <button type="button" class="btn btn-primary" (click)="advanceJob()">
+                  @if (job.status === 'en_route') {
+                    <app-icon name="pin" [size]="16" />
+                    I have arrived
+                  } @else {
+                    <app-icon name="check" [size]="16" />
+                    Complete job
+                  }
+                </button>
+              </div>
+            </section>
+          }
+
+          @if (queue().length) {
+            <section class="card">
+              <div class="card-head">
+                <h3>Up next</h3>
+                <span class="badge badge--neutral">{{ queue().length }} queued</span>
+              </div>
+              <ul class="queue">
+                @for (job of queue(); track job.id) {
+                  <li>
+                    <span class="queue__icon"><app-icon [name]="job.icon" [size]="17" /></span>
+                    <div>
+                      <strong>{{ job.service }}</strong>
+                      <span>{{ job.customer }} · {{ job.distance }} away</span>
+                    </div>
+                    <strong class="queue__payout">₹{{ job.payout }}</strong>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h3>Recent jobs</h3>
+                <p class="card-head__sub">Your last three completed rescues</p>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="setTab('earnings')">
+                Earnings
+                <app-icon name="arrow-right" [size]="15" />
+              </button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Date</th>
+                    <th>Rider</th>
+                    <th>Service</th>
+                    <th>Payout</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (job of recentJobs; track job.id) {
+                    <tr>
+                      <td><strong>{{ job.id }}</strong></td>
+                      <td>{{ job.date }}</td>
+                      <td>{{ job.customer }}</td>
+                      <td>{{ job.service }}</td>
+                      <td>{{ job.amount }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <aside class="mech-side">
+          <section class="card card-pad availability">
+            <div class="availability__head">
+              <div>
+                <h3>Availability</h3>
+                <p>{{ online() ? 'Receiving requests' : 'Paused' }}</p>
+              </div>
+              <button
+                type="button"
+                class="toggle"
+                [class.toggle--on]="online()"
+                role="switch"
+                [attr.aria-checked]="online()"
+                aria-label="Toggle availability"
+                (click)="toggleOnline()"
+              >
+                <span></span>
+              </button>
+            </div>
+
+            <ul class="availability__list">
+              <li><span>Status</span><strong>{{ online() ? 'Online' : 'Offline' }}</strong></li>
+              <li><span>Service radius</span><strong>12 km</strong></li>
+              <li><span>Online since</span><strong>{{ online() ? '09:12' : '—' }}</strong></li>
+            </ul>
+          </section>
+
+          <section class="earnings-mini">
+            <span class="eyebrow eyebrow--plain">Today so far</span>
+            <strong class="earnings-mini__value">₹{{ earningsToday() }}</strong>
+            <p>+18% from yesterday</p>
+
+            <div class="earnings-mini__bars" aria-hidden="true">
+              @for (bar of weekly; track bar.day) {
+                <span [style.height.%]="bar.value"></span>
+              }
+            </div>
+
+            <button type="button" class="btn btn-light btn-sm btn-block" (click)="setTab('earnings')">
+              View earnings
+            </button>
+          </section>
+
+          <section class="card card-pad">
+            <h3 class="side-title">Performance</h3>
+            <div class="perf">
+              <div class="perf__row">
+                <div><span>Acceptance rate</span><strong>96%</strong></div>
+                <div class="perf__track"><span style="width: 96%"></span></div>
+              </div>
+              <div class="perf__row">
+                <div><span>On-time arrivals</span><strong>98%</strong></div>
+                <div class="perf__track"><span style="width: 98%"></span></div>
+              </div>
+              <div class="perf__row">
+                <div><span>Five-star reviews</span><strong>91%</strong></div>
+                <div class="perf__track"><span style="width: 91%"></span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card card-pad verified">
+            <span class="badge badge--green"><app-icon name="shield" [size]="12" />Verified partner</span>
+            <h3 class="side-title">Documents current</h3>
+            <p>ID, licence, and workshop verification are valid until March 2027.</p>
+            <a class="verify-link" routerLink="/" fragment="support">
+              View verification details
+              <app-icon name="arrow-right" [size]="14" />
+            </a>
+          </section>
+        </aside>
+      </div>
+    }
+
+    <!-- Earnings ----------------------------------------------------------->
+    @case ('earnings') {
+      <div class="stat-row stat-row--three">
+        <article class="stat">
+          <span class="stat__icon stat__icon--green"><app-icon name="trending-up" [size]="18" /></span>
+          <div>
+            <span class="stat__label">This week</span>
+            <strong>₹7,840</strong>
+            <small class="stat__trend">+18% vs last week</small>
+          </div>
+        </article>
+
+        <article class="stat">
+          <span class="stat__icon stat__icon--amber"><app-icon name="wallet" [size]="18" /></span>
+          <div>
+            <span class="stat__label">Pending payout</span>
+            <strong>₹3,420</strong>
+            <small>Arrives Friday</small>
+          </div>
+        </article>
+
+        <article class="stat">
+          <span class="stat__icon stat__icon--blue"><app-icon name="activity" [size]="18" /></span>
+          <div>
+            <span class="stat__label">Lifetime earnings</span>
+            <strong>₹84,260</strong>
+            <small>Since Jan 2026</small>
+          </div>
+        </article>
+      </div>
+
+      <div class="earnings-layout">
+        <section class="card chart-card">
+          <div class="card-head">
+            <div>
+              <h3>Weekly earnings</h3>
+              <p class="card-head__sub">Payouts after MotoRescue's 12% platform fee</p>
+            </div>
+            <span class="badge badge--green">+18% this week</span>
+          </div>
+
+          <div class="chart">
+            @for (bar of weekly; track bar.day) {
+              <div class="chart__col">
+                <span class="chart__amount">{{ bar.amount }}</span>
+                <div class="chart__track">
+                  <span class="chart__bar" [style.height.%]="bar.value"></span>
+                </div>
+                <span class="chart__day">{{ bar.day }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="chart-card__foot">
+            <span><app-icon name="calendar" [size]="15" /> Mon 28 Oct – Sun 03 Nov</span>
+            <strong>₹7,840 total</strong>
+          </div>
+        </section>
+
+        <aside class="payout-card">
+          <span class="eyebrow eyebrow--plain">Next payout</span>
+          <strong class="payout-card__value">₹3,420</strong>
+          <p>Friday, 06 November</p>
+
+          <div class="payout-card__rows">
+            <div><span>Completed jobs</span><strong>11</strong></div>
+            <div><span>Platform fee</span><strong>−₹468</strong></div>
+            <div><span>Tips</span><strong>₹240</strong></div>
+          </div>
+
+          <button type="button" class="btn btn-light btn-block" (click)="withdraw()">
+            Request early payout
+          </button>
+          <small class="payout-card__note">No fee for standard Friday payouts.</small>
+        </aside>
+      </div>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Payout history</h3>
+            <p class="card-head__sub">Transferred to HDFC •••• 4821</p>
+          </div>
+          <span class="badge badge--neutral">INR</span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Payout ID</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (payout of payouts; track payout.id) {
+                <tr>
+                  <td><strong>{{ payout.id }}</strong></td>
+                  <td>{{ payout.date }}</td>
+                  <td>{{ payout.amount }}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge--amber]="payout.status === 'Processing'"
+                      [class.badge--green]="payout.status === 'Paid'"
+                    >
+                      {{ payout.status }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    <!-- Profile ------------------------------------------------------------>
+    @case ('profile') {
+      <div class="profile-layout">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h3>Partner details</h3>
+              <p class="card-head__sub">Shown to riders once a job is accepted.</p>
+            </div>
+            <span class="badge badge--green"><app-icon name="shield" [size]="12" />Verified</span>
+          </div>
+
+          <form class="profile-form card-pad" [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+            <div class="mechanic-identity">
+              <span class="avatar avatar--lg avatar--green">{{ auth.user()?.fullName?.charAt(0) }}</span>
+              <div>
+                <strong>{{ auth.user()?.fullName }}</strong>
+                <span>★ 4.9 · 1,284 rescues · Whitefield, Bengaluru</span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="field">
+                <label class="label" for="mechName">Full name</label>
+                <input id="mechName" class="input" formControlName="fullName" autocomplete="name" />
+              </div>
+              <div class="field">
+                <label class="label" for="mechPhone">Mobile number</label>
+                <input id="mechPhone" class="input" formControlName="phone" type="tel" autocomplete="tel" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="workshop">Workshop or base location</label>
+              <input id="workshop" class="input" formControlName="workshop" />
+              <span class="hint">Riders see the approximate area, never your exact address.</span>
+            </div>
+
+            <div class="field">
+              <label class="label" for="radius">Service radius</label>
+              <select id="radius" class="select" formControlName="radius">
+                @for (option of radiusOptions; track option) {
+                  <option [value]="option">{{ option }}</option>
+                }
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save profile</button>
+          </form>
+        </section>
+
+        <aside class="profile-side">
+          <section class="card card-pad">
+            <h3 class="side-title">At a glance</h3>
+            <div class="glance">
+              <div><strong>1,284</strong><span>Rescues completed</span></div>
+              <div><strong>4.9</strong><span>Average rating</span></div>
+              <div><strong>3 yrs</strong><span>On MotoRescue</span></div>
+            </div>
+          </section>
+
+          <section class="card card-pad">
+            <h3 class="side-title">Service areas</h3>
+            <div class="area-chips">
+              @for (area of ['Whitefield', 'Indiranagar', 'Koramangala', 'HSR Layout', 'Marathahalli']; track area) {
+                <span class="area-chip">{{ area }}</span>
+              }
+            </div>
+            <p class="side-note">Zones update automatically with your live location.</p>
+          </section>
+
+          <section class="card card-pad">
+            <h3 class="side-title">Documents</h3>
+            <ul class="docs">
+              <li><span><app-icon name="check" [size]="13" /></span>Government ID <strong>Verified</strong></li>
+              <li><span><app-icon name="check" [size]="13" /></span>Driving licence <strong>Verified</strong></li>
+              <li><span><app-icon name="check" [size]="13" /></span>Workshop certification <strong>Verified</strong></li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+    }
+  }
+</app-dashboard-shell>

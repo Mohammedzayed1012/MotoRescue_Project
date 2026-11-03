@@ -1,0 +1,106 @@
+<app-auth-shell
+  panelTitle="Welcome back to the road."
+  panelText="Log in to track a live rescue, review past jobs, and keep every bike in your garage ready to ride."
+  heading="Log in"
+  subheading="Enter your details to access your MotoRescue account."
+>
+  <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (error()) {
+      <div class="alert alert--error" role="alert">
+        <app-icon name="alert" [size]="17" />
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    @if (notice()) {
+      <div class="alert alert--info" role="status">
+        <app-icon name="lock" [size]="17" />
+        <span>{{ notice() }}</span>
+      </div>
+    }
+
+    <div class="field">
+      <label class="label" for="loginEmail">Email address</label>
+      <input
+        id="loginEmail"
+        class="input"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        placeholder="you@example.com"
+        [class.is-invalid]="!!emailError()"
+      />
+      @if (emailError()) {
+        <span class="error-text">{{ emailError() }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <div class="label-row">
+        <label class="label" for="loginPassword">Password</label>
+        <button type="button" class="forgot" (click)="showPasswordReset()">
+          Forgot password?
+        </button>
+      </div>
+
+      <div class="input-wrap">
+        <input
+          id="loginPassword"
+          class="input"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          placeholder="Enter your password"
+          [class.is-invalid]="!!passwordError()"
+        />
+        <button
+          type="button"
+          class="input-affix"
+          (click)="showPassword.set(!showPassword())"
+          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+        >
+          <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="18" />
+        </button>
+      </div>
+
+      @if (passwordError()) {
+        <span class="error-text">{{ passwordError() }}</span>
+      }
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block submit" [disabled]="loading()">
+      @if (loading()) {
+        <span class="spinner"></span>
+        Signing in…
+      } @else {
+        Sign in
+        <app-icon name="arrow-right" [size]="17" />
+      }
+    </button>
+  </form>
+
+  <div class="divider">or preview without an account</div>
+
+  <div class="demo-grid">
+    @for (demo of demos; track demo.role) {
+      <button type="button" class="demo-btn" (click)="openDemo(demo.role)">
+        <app-icon [name]="demo.icon" [size]="18" />
+        {{ demo.label }}
+      </button>
+    }
+  </div>
+
+  <p class="demo-note">
+    Safe, local demo workspaces with sample data. No account needed.
+  </p>
+
+  <div class="switch">
+    New to MotoRescue?
+    <a routerLink="/register">Create an account</a>
+  </div>
+
+  <div class="trust-row">
+    <span><app-icon name="shield" [size]="13" /> Verified network</span>
+    <span><app-icon name="lock" [size]="13" /> Secure sign-in</span>
+  </div>
+</app-auth-shell>

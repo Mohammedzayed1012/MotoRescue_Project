@@ -1,0 +1,416 @@
+<app-dashboard-shell
+  [nav]="navItems"
+  [active]="activeTab()"
+  [title]="pageTitle()"
+  [subtitle]="pageSubtitle()"
+  roleLabel="Operations console"
+  (activeChange)="setTab($event)"
+>
+  <button shellActions type="button" class="btn btn-light btn-sm" (click)="exportRequests()">
+    <app-icon name="arrow-up-right" [size]="15" />
+    Export CSV
+  </button>
+
+  @switch (activeTab()) {
+    <!-- Overview ----------------------------------------------------------->
+    @case ('overview') {
+      <div class="kpi-row">
+        @for (kpi of kpis; track kpi.label) {
+          <article class="kpi">
+            <span
+              class="kpi__icon"
+              [class.kpi__icon--green]="kpi.tone === 'green'"
+              [class.kpi__icon--amber]="kpi.tone === 'amber'"
+              [class.kpi__icon--blue]="kpi.tone === 'blue'"
+            >
+              <app-icon [name]="kpi.icon" [size]="18" />
+            </span>
+            <div>
+              <span class="kpi__label">{{ kpi.label }}</span>
+              <strong>{{ kpi.value }}</strong>
+              <small>{{ kpi.hint }}</small>
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="admin-grid">
+        <div class="admin-main">
+          <section class="card volume-card">
+            <div class="card-head">
+              <div>
+                <h3>Rescue volume</h3>
+                <p class="card-head__sub">Requests per day across all live zones</p>
+              </div>
+              <div class="volume-card__badge">
+                <span class="badge badge--green">+12%</span>
+                <span class="volume-card__total">403 this week</span>
+              </div>
+            </div>
+
+            <div class="chart">
+              @for (bar of chart; track bar.day; let last = $last) {
+                <div class="chart__col">
+                  <span class="chart__count">{{ bar.count }}</span>
+                  <div class="chart__track">
+                    <span class="chart__bar" [class.chart__bar--today]="last" [style.height.%]="bar.value"></span>
+                  </div>
+                  <span class="chart__day">{{ bar.day }}</span>
+                </div>
+              }
+            </div>
+
+            <div class="card-head volume-card__foot">
+              <span><span class="dot dot--green"></span> 142 mechanics online</span>
+              <span><span class="dot dot--amber"></span> 6 requests awaiting assignment</span>
+              <span><span class="dot dot--red"></span> 1 zone under weather alert</span>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h3>Live requests</h3>
+                <p class="card-head__sub">Requests that need attention right now</p>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="setTab('requests')">
+                View all
+                <app-icon name="arrow-right" [size]="15" />
+              </button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Reference</th>
+                    <th>Rider</th>
+                    <th>City</th>
+                    <th>Service</th>
+                    <th>Mechanic</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (request of liveRequests(); track request.id) {
+                    <tr>
+                      <td><strong>{{ request.id }}</strong></td>
+                      <td>{{ request.rider }}</td>
+                      <td>{{ request.city }}</td>
+                      <td>{{ request.service }}</td>
+                      <td>{{ request.mechanic }}</td>
+                      <td>
+                        <span
+                          class="badge"
+                          [class.badge--amber]="request.status === 'searching'"
+                          [class.badge--blue]="request.status === 'in_progress'"
+                        >
+                          {{ request.label }}
+                        </span>
+                      </td>
+                      <td class="table__action">
+                        @if (request.status === 'searching') {
+                          <button type="button" class="btn btn-soft btn-sm" (click)="assign(request)">
+                            Assign
+                          </button>
+                        } @else {
+                          <button type="button" class="btn btn-ghost btn-sm" (click)="complete(request)">
+                            Mark done
+                          </button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <aside class="admin-side">
+          <section class="card">
+            <div class="card-head">
+              <h3>Activity</h3>
+              <span class="badge badge--neutral">Live</span>
+            </div>
+            <ul class="feed">
+              @for (item of activity; track item.text) {
+                <li>
+                  <span
+                    class="feed__icon"
+                    [class.feed__icon--green]="item.tone === 'green'"
+                    [class.feed__icon--blue]="item.tone === 'blue'"
+                    [class.feed__icon--amber]="item.tone === 'amber'"
+                  >
+                    <app-icon [name]="item.icon" [size]="15" />
+                  </span>
+                  <div>
+                    <p>{{ item.text }}</p>
+                    <span>{{ item.time }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h3>Verification queue</h3>
+              <span class="badge badge--amber">{{ pendingMechanics().length }} pending</span>
+            </div>
+
+            @for (mechanic of pendingMechanics(); track mechanic.id) {
+              <div class="verify-row">
+                <span
+                  class="avatar avatar--sm"
+                  [class.avatar--brand]="mechanic.tone === 'brand'"
+                  [class.avatar--green]="mechanic.tone === 'green'"
+                  [class.avatar--blue]="mechanic.tone === 'blue'"
+                >
+                  {{ mechanic.initials }}
+                </span>
+                <div class="verify-row__copy">
+                  <strong>{{ mechanic.name }}</strong>
+                  <span>{{ mechanic.zone }}, {{ mechanic.city }}</span>
+                </div>
+                <button type="button" class="btn btn-soft btn-sm" (click)="approve(mechanic)">
+                  Approve
+                </button>
+              </div>
+            }
+          </section>
+
+          <section class="card card-pad health">
+            <h3>System health</h3>
+            <ul class="health__list">
+              <li><span>API gateway</span><strong class="is-good">99.98%</strong></li>
+              <li><span>Dispatch engine</span><strong class="is-good">42 ms</strong></li>
+              <li><span>Payments</span><strong class="is-good">Operational</strong></li>
+              <li><span>Live tracking</span><strong class="is-good">Operational</strong></li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+    }
+
+    <!-- Requests ----------------------------------------------------------->
+    @case ('requests') {
+      <section class="card">
+        <div class="requests-toolbar">
+          <div class="history-search">
+            <app-icon name="search" [size]="16" />
+            <input
+              type="search"
+              placeholder="Search by ID, rider, city, or mechanic"
+              aria-label="Search requests"
+              (input)="requestQuery.set($any($event.target).value)"
+            />
+          </div>
+
+          <div class="filter-chips" role="group" aria-label="Filter requests by status">
+            @for (filter of filters; track filter.key) {
+              <button
+                type="button"
+                class="filter-chip"
+                [class.filter-chip--active]="requestFilter() === filter.key"
+                (click)="setFilter(filter.key)"
+              >
+                {{ filter.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (filteredRequests().length) {
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Rider</th>
+                  <th>City</th>
+                  <th>Service</th>
+                  <th>Mechanic</th>
+                  <th>Age</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (request of filteredRequests(); track request.id) {
+                  <tr>
+                    <td><strong>{{ request.id }}</strong></td>
+                    <td>{{ request.rider }}</td>
+                    <td>{{ request.city }}</td>
+                    <td>{{ request.service }}</td>
+                    <td>{{ request.mechanic }}</td>
+                    <td>{{ request.age }}</td>
+                    <td>{{ request.amount }}</td>
+                    <td>
+                      <span
+                        class="badge"
+                        [class.badge--amber]="request.status === 'searching'"
+                        [class.badge--blue]="request.status === 'in_progress'"
+                        [class.badge--green]="request.status === 'completed'"
+                        [class.badge--neutral]="request.status === 'cancelled'"
+                      >
+                        {{ request.label }}
+                      </span>
+                    </td>
+                    <td class="table__action">
+                      @if (request.status === 'searching') {
+                        <button type="button" class="btn btn-soft btn-sm" (click)="assign(request)">
+                          Assign
+                        </button>
+                      } @else if (request.status === 'in_progress') {
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="complete(request)">
+                          Mark done
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="empty-state">
+            <app-icon name="search" [size]="24" />
+            <h3>No requests match this view</h3>
+            <p>Try a different status filter or clear the search to see every request.</p>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Mechanics ---------------------------------------------------------->
+    @case ('mechanics') {
+      <div class="network-summary">
+        <div><strong>52</strong><span>Active partners</span></div>
+        <div><strong>38</strong><span>Online right now</span></div>
+        <div><strong>4.8</strong><span>Network rating</span></div>
+        <div><strong>96%</strong><span>Acceptance rate</span></div>
+      </div>
+
+      <div class="mechanic-grid">
+        @for (mechanic of mechanics(); track mechanic.id) {
+          <article class="card mechanic-card">
+            <div class="mechanic-card__head">
+              <span
+                class="avatar"
+                [class.avatar--brand]="mechanic.tone === 'brand'"
+                [class.avatar--green]="mechanic.tone === 'green'"
+                [class.avatar--blue]="mechanic.tone === 'blue'"
+              >
+                {{ mechanic.initials }}
+              </span>
+
+              <span
+                class="badge"
+                [class.badge--green]="mechanic.status === 'Verified'"
+                [class.badge--amber]="mechanic.status === 'Pending'"
+                [class.badge--red]="mechanic.status === 'Review'"
+              >
+                {{ mechanic.status }}
+              </span>
+            </div>
+
+            <h3>{{ mechanic.name }}</h3>
+            <span class="mechanic-card__zone">{{ mechanic.zone }}, {{ mechanic.city }}</span>
+
+            <dl class="mechanic-card__meta">
+              <div><dt>Rescues</dt><dd>{{ mechanic.jobs }}</dd></div>
+              <div><dt>Rating</dt><dd>{{ mechanic.rating || '—' }}</dd></div>
+              <div><dt>Joined</dt><dd>{{ mechanic.joined }}</dd></div>
+            </dl>
+
+            <div class="mechanic-card__foot">
+              @if (mechanic.status !== 'Verified') {
+                <button type="button" class="btn btn-primary btn-sm btn-block" (click)="approve(mechanic)">
+                  <app-icon name="shield" [size]="14" />
+                  Verify partner
+                </button>
+              } @else {
+                <span class="verified-note">
+                  <app-icon name="check" [size]="14" />
+                  Verified partner
+                </span>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    <!-- Settings ----------------------------------------------------------->
+    @case ('settings') {
+      <div class="settings-grid">
+        <div class="settings-main">
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h3>Operations</h3>
+                <p class="card-head__sub">Dispatch, escalation, and platform behaviour.</p>
+              </div>
+            </div>
+
+            <div class="settings-list">
+              @for (setting of settings(); track setting.key) {
+                <div class="setting">
+                  <span class="setting__icon"><app-icon [name]="setting.icon" [size]="18" /></span>
+                  <div class="setting__copy">
+                    <strong>{{ setting.title }}</strong>
+                    <p>{{ setting.description }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="toggle"
+                    [class.toggle--on]="setting.enabled"
+                    role="switch"
+                    [attr.aria-checked]="setting.enabled"
+                    [attr.aria-label]="'Toggle ' + setting.title"
+                    (click)="toggleSetting(setting.key)"
+                  >
+                    <span></span>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <div class="settings-actions">
+              <button type="button" class="btn btn-primary" (click)="saveSettings()">Save settings</button>
+              <span>Changes apply to all live zones immediately.</span>
+            </div>
+          </section>
+        </div>
+
+        <aside class="settings-side">
+          <section class="card card-pad">
+            <h3 class="side-title">Rescue desk</h3>
+            <p class="side-text">Operations coverage is staffed 24/7 across three shifts.</p>
+            <div class="desk-row">
+              <span class="avatar avatar--sm avatar--brand">PN</span>
+              <div><strong>Priya Nair</strong><span>Shift lead · until 22:00</span></div>
+            </div>
+            <div class="desk-row">
+              <span class="avatar avatar--sm avatar--green">VS</span>
+              <div><strong>Vikram Singh</strong><span>Escalations · until 06:00</span></div>
+            </div>
+          </section>
+
+          <section class="card card-pad">
+            <h3 class="side-title">Environment</h3>
+            <dl class="env">
+              <div><dt>Region</dt><dd>asia-south1</dd></div>
+              <div><dt>API version</dt><dd>v2.4.1</dd></div>
+              <div><dt>Last deploy</dt><dd>02 Nov, 21:40</dd></div>
+              <div><dt>Status</dt><dd><span class="badge badge--green">Healthy</span></dd></div>
+            </dl>
+          </section>
+        </aside>
+      </div>
+    }
+  }
+</app-dashboard-shell>

@@ -1,0 +1,93 @@
+<div class="auth">
+  <aside class="auth__aside">
+    <a routerLink="/" class="auth__logo" aria-label="MotoRescue home">
+      <app-logo variant="light" />
+    </a>
+
+    <div class="auth__aside-main">
+      <span class="eyebrow">{{ eyebrow() }}</span>
+      <h1>{{ panelTitle() }}</h1>
+      <p class="auth__panel-text">{{ panelText() }}</p>
+
+      <ul class="auth__perks">
+        <li>
+          <span><app-icon name="check" [size]="14" /></span>
+          Live rescue tracking, from request to arrival
+        </li>
+        <li>
+          <span><app-icon name="check" [size]="14" /></span>
+          Verified mechanics and upfront, locked pricing
+        </li>
+        <li>
+          <span><app-icon name="check" [size]="14" /></span>
+          One account for every bike you ride
+        </li>
+      </ul>
+    </div>
+
+    <div class="auth__aside-bottom">
+      <div class="auth__quote">
+        <div class="auth__quote-stars">★★★★★</div>
+        <p>
+          “Fourteen minutes from tap to repair. The price I approved was the price
+          I paid.”
+        </p>
+        <div class="auth__quote-author">
+          <span class="avatar avatar--sm avatar--brand">AR</span>
+          <span><strong>Ananya Rao</strong><small>Rescued on Outer Ring Road</small></span>
+        </div>
+      </div>
+
+      <div class="auth__stats">
+        <div><strong>18 min</strong><span>median arrival</span></div>
+        <div><strong>2,400+</strong><span>verified mechanics</span></div>
+        <div><strong>4.9/5</strong><span>rider rating</span></div>
+      </div>
+
+      <a routerLink="/" class="auth__back">
+        <app-icon name="arrow-right" [size]="15" />
+        Back to homepage
+      </a>
+    </div>
+
+    <svg class="auth__pattern" viewBox="0 0 600 900" fill="none" aria-hidden="true">
+      <g class="auth__roads">
+        <path d="M-40 170h700M-40 360h700M-40 560h700M-40 760h700" />
+        <path d="M120-40v980M300-40v980M470-40v980" />
+      </g>
+      <path
+        class="auth__route"
+        d="M-20 760c90 0 70-200 180-200s100 240 210 240 90-260 240-260"
+      />
+      <circle cx="160" cy="560" r="7" class="auth__route-dot" />
+      <circle cx="370" cy="800" r="7" class="auth__route-dot" />
+    </svg>
+  </aside>
+
+  <main class="auth__main" id="main-content">
+    <div class="auth__mobile-top">
+      <a routerLink="/" aria-label="MotoRescue home"><app-logo /></a>
+      <a routerLink="/" class="auth__mobile-back">
+        <app-icon name="arrow-right" [size]="14" />
+        Back
+      </a>
+    </div>
+
+    <div class="auth__card">
+      <div class="auth__heading">
+        <h2>{{ heading() }}</h2>
+        @if (subheading()) {
+          <p>{{ subheading() }}</p>
+        }
+      </div>
+
+      <ng-content />
+    </div>
+
+    <p class="auth__legal">
+      Protected by MotoRescue. By continuing you agree to our
+      <a routerLink="/" fragment="support">Terms</a> and
+      <a routerLink="/" fragment="support">Privacy Policy</a>.
+    </p>
+  </main>
+</div>

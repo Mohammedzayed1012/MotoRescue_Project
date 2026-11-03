@@ -1,0 +1,236 @@
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.role-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.role-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.role-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.role-card:has(input:focus-visible) {
+  outline: 3px solid rgba(242, 84, 45, 0.35);
+  outline-offset: 2px;
+}
+
+.role-card:hover {
+  border-color: var(--slate-300);
+}
+
+.role-card--active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.role-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--slate-100);
+  color: var(--ink-800);
+}
+
+.role-card--active .role-card__icon {
+  background: #fff;
+  color: var(--brand-strong);
+}
+
+.role-card__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.role-card__copy strong {
+  display: block;
+  color: var(--ink-900);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.role-card__copy small {
+  display: block;
+  margin-top: 2px;
+  color: var(--slate-500);
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.role-card__tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1px solid var(--slate-300);
+  border-radius: 50%;
+  background: #fff;
+  color: transparent;
+}
+
+.role-card--active .role-card__tick {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.role-note {
+  margin: 0;
+  font-size: 0.74rem;
+}
+
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.strength__bars {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.strength__bar {
+  height: 4px;
+  flex: 1;
+  border-radius: 3px;
+  background: var(--slate-200);
+  transition: background 0.2s ease;
+}
+
+.strength[data-tone='weak'] .strength__bar.is-filled {
+  background: var(--red);
+}
+
+.strength[data-tone='fair'] .strength__bar.is-filled {
+  background: #d49111;
+}
+
+.strength[data-tone='strong'] .strength__bar.is-filled {
+  background: var(--green);
+}
+
+.strength__label {
+  color: var(--slate-400);
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.strength[data-tone='strong'] .strength__label {
+  color: var(--green);
+}
+
+.strength[data-tone='weak'] .strength__label {
+  color: var(--red);
+}
+
+.check {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+  color: var(--slate-600);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.check__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  border: 1px solid var(--slate-300);
+  border-radius: 5px;
+  background: #fff;
+  color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.check input:checked + .check__box {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.check input:focus-visible + .check__box {
+  outline: 3px solid rgba(242, 84, 45, 0.35);
+  outline-offset: 2px;
+}
+
+.check__text a {
+  color: var(--brand-strong);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.submit {
+  min-height: 50px;
+  margin-top: 4px;
+}
+
+.switch {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--slate-100);
+  color: var(--slate-500);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.switch a {
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.switch a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 420px) {
+  .role-picker {
+    grid-template-columns: 1fr;
+  }
+}

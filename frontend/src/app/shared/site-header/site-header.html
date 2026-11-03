@@ -1,0 +1,79 @@
+<header class="site-header" [class.is-scrolled]="scrolled()">
+  <div class="container header-inner">
+    <a routerLink="/" class="brand" aria-label="MotoRescue home" (click)="closeMenu()">
+      <app-logo />
+    </a>
+
+    <nav class="desktop-nav" aria-label="Main navigation">
+      <a routerLink="/" fragment="how">How it works</a>
+      <a routerLink="/" fragment="services">Services</a>
+      <a routerLink="/" fragment="pricing">Pricing</a>
+      <a routerLink="/" fragment="support">Support</a>
+    </nav>
+
+    <div class="header-actions">
+      @if (auth.isAuthenticated()) {
+        <a [routerLink]="dashboardPath()" class="user-chip" aria-label="Open your dashboard">
+          <span class="avatar avatar--sm">{{ initials() }}</span>
+          <span class="user-chip__name">{{ auth.firstName() }}</span>
+          <app-icon name="chevron-right" [size]="15" />
+        </a>
+      } @else {
+        <a routerLink="/login" class="btn btn-ghost btn-sm desktop-only">Log in</a>
+        <a routerLink="/register" class="btn btn-primary btn-sm">
+          Get help
+          <app-icon name="arrow-right" [size]="16" />
+        </a>
+      }
+
+      <button
+        type="button"
+        class="mobile-toggle"
+        [attr.aria-expanded]="menuOpen()"
+        aria-controls="mobile-nav"
+        [attr.aria-label]="menuOpen() ? 'Close menu' : 'Open menu'"
+        (click)="toggleMenu()"
+      >
+        <app-icon [name]="menuOpen() ? 'close' : 'menu'" [size]="22" />
+      </button>
+    </div>
+  </div>
+
+  @if (menuOpen()) {
+    <div class="mobile-nav" id="mobile-nav">
+      <nav aria-label="Mobile navigation">
+        <a routerLink="/" fragment="how" (click)="closeMenu()">
+          <span>How it works</span>
+          <app-icon name="chevron-right" [size]="16" />
+        </a>
+        <a routerLink="/" fragment="services" (click)="closeMenu()">
+          <span>Services</span>
+          <app-icon name="chevron-right" [size]="16" />
+        </a>
+        <a routerLink="/" fragment="pricing" (click)="closeMenu()">
+          <span>Pricing</span>
+          <app-icon name="chevron-right" [size]="16" />
+        </a>
+        <a routerLink="/" fragment="support" (click)="closeMenu()">
+          <span>Support</span>
+          <app-icon name="chevron-right" [size]="16" />
+        </a>
+      </nav>
+
+      <div class="mobile-nav__actions">
+        @if (auth.isAuthenticated()) {
+          <a [routerLink]="dashboardPath()" class="btn btn-dark btn-block" (click)="closeMenu()">
+            Open dashboard
+            <app-icon name="arrow-right" [size]="16" />
+          </a>
+        } @else {
+          <a routerLink="/login" class="btn btn-outline btn-block" (click)="closeMenu()">Log in</a>
+          <a routerLink="/register" class="btn btn-primary btn-block" (click)="closeMenu()">
+            Get help now
+            <app-icon name="arrow-right" [size]="16" />
+          </a>
+        }
+      </div>
+    </div>
+  }
+</header>

@@ -1,0 +1,125 @@
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forgot {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--brand-strong);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.forgot:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.submit {
+  min-height: 50px;
+  margin-top: 3px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 14px;
+  color: var(--slate-400);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--slate-200);
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.demo-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink-700);
+  font-size: 0.72rem;
+  font-weight: 700;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.demo-btn app-icon {
+  color: var(--brand);
+}
+
+.demo-btn:hover {
+  border-color: rgba(242, 84, 45, 0.45);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.demo-note {
+  margin-top: 9px;
+  color: var(--slate-400);
+  font-size: 0.67rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.switch {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--slate-100);
+  color: var(--slate-500);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.switch a {
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.switch a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.trust-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  color: var(--slate-400);
+  font-size: 0.67rem;
+}
+
+.trust-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

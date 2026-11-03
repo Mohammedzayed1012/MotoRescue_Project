@@ -1,0 +1,475 @@
+<app-site-header />
+
+<main id="main-content">
+  <!-- Hero ------------------------------------------------------------------>
+  <section class="hero">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="container hero__grid">
+      <div class="hero__copy">
+        <span class="hero__pill">
+          <span class="live-dot"></span>
+          24/7 rescue · Now in 6 cities
+        </span>
+
+        <h1>
+          Stuck on the road?
+          <span class="hero__accent">Help arrives in minutes.</span>
+        </h1>
+
+        <p class="hero__lead">
+          MotoRescue matches you with the nearest verified mechanic, shows an upfront
+          price, and tracks the whole rescue live. No calling around. No haggling.
+          No guesswork.
+        </p>
+
+        <div class="hero__actions">
+          <button type="button" class="btn btn-primary btn-lg" (click)="requestRescue()">
+            Request a rescue
+            <app-icon name="arrow-right" [size]="18" />
+          </button>
+          <a class="btn btn-outline btn-lg" href="#how">See how it works</a>
+        </div>
+
+        <div class="hero__proof">
+          <div class="avatar-stack" aria-hidden="true">
+            <span class="avatar avatar--sm avatar--brand">AR</span>
+            <span class="avatar avatar--sm avatar--green">KM</span>
+            <span class="avatar avatar--sm avatar--blue">SP</span>
+            <span class="avatar avatar--sm">+</span>
+          </div>
+          <div class="hero__proof-copy">
+            <span class="stars">★★★★★ <strong>4.9</strong></span>
+            <span>from 1,200+ rescued riders</span>
+          </div>
+          <span class="hero__proof-divider" aria-hidden="true"></span>
+          <div class="hero__verified">
+            <app-icon name="shield" [size]="18" />
+            Verified mechanics
+          </div>
+        </div>
+      </div>
+
+      <div class="hero__visual">
+        <div class="hero__map">
+          <app-map-preview [eta]="''" badge="Whitefield, Bengaluru" />
+
+          <div class="track-card">
+            <div class="track-card__head">
+              <span class="track-card__status">
+                <span class="live-dot"></span>
+                Mechanic on the way
+              </span>
+              <span class="track-card__eta">8 min</span>
+            </div>
+
+            <div class="track-card__progress" aria-hidden="true">
+              <span></span>
+            </div>
+
+            <div class="track-card__mechanic">
+              <span class="avatar avatar--green">RK</span>
+              <div>
+                <strong>Ravi Kumar</strong>
+                <span>Hero Splendor · KA 05 AB 1234</span>
+              </div>
+              <a class="track-card__call" href="tel:+918000000000" aria-label="Call your mechanic">
+                <app-icon name="phone" [size]="17" />
+              </a>
+            </div>
+
+            <div class="track-card__foot">
+              <span>Puncture repair · quoted upfront</span>
+              <strong>₹180 – ₹240</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero__float">
+          <span class="hero__float-icon"><app-icon name="shield" [size]="18" /></span>
+          <div>
+            <strong>Police-verified</strong>
+            <span>Every rescue partner</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats ----------------------------------------------------------------->
+  <section class="stats" aria-label="MotoRescue at a glance">
+    <div class="container">
+      <div class="stats__grid">
+        <div class="stats__item">
+          <strong>18 min</strong>
+          <span>Median arrival time</span>
+        </div>
+        <div class="stats__item">
+          <strong>2,400+</strong>
+          <span>Verified mechanics</span>
+        </div>
+        <div class="stats__item">
+          <strong>4.9/5</strong>
+          <span>Average rider rating</span>
+        </div>
+        <div class="stats__item">
+          <strong>24/7</strong>
+          <span>Live rescue desk</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works ---------------------------------------------------------->
+  <section class="section" id="how">
+    <div class="container">
+      <div class="section-head section-head--center">
+        <span class="eyebrow">How it works</span>
+        <h2>Back on the road in three taps</h2>
+        <p>
+          We built the whole rescue around the moment things go wrong: one clear
+          screen, one honest price, one mechanic you can see coming.
+        </p>
+      </div>
+
+      <div class="steps">
+        @for (step of steps; track step.title; let i = $index) {
+          <article class="step">
+            <div class="step__top">
+              <span class="step__num">0{{ i + 1 }}</span>
+              <span class="step__icon"><app-icon [name]="step.icon" [size]="22" /></span>
+            </div>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.description }}</p>
+          </article>
+        }
+      </div>
+
+      <p class="steps__note">
+        <app-icon name="sparkles" [size]="16" />
+        No app download needed — MotoRescue works right in your browser.
+      </p>
+    </div>
+  </section>
+
+  <!-- Services -------------------------------------------------------------->
+  <section class="section section--cream" id="services">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">What we fix</span>
+        <h2>Roadside problems, handled</h2>
+        <p>
+          From a slow puncture to a bike that will not start, our mechanics carry
+          the tools and parts for the most common breakdowns.
+        </p>
+      </div>
+
+      <div class="service-grid">
+        @for (service of services; track service.id) {
+          <button type="button" class="service-card" (click)="selectService(service)">
+            <span class="service-card__icon">
+              <app-icon [name]="service.icon" [size]="23" />
+            </span>
+            <h3>{{ service.title }}</h3>
+            <p>{{ service.description }}</p>
+            <span class="service-card__foot">
+              <span>{{ service.price }}</span>
+              <span class="service-card__arrow"><app-icon name="arrow-up-right" [size]="16" /></span>
+            </span>
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Why MotoRescue -------------------------------------------------------->
+  <section class="section" id="about">
+    <div class="container why">
+      <div class="why__copy">
+        <span class="eyebrow">Why riders choose us</span>
+        <h2>Designed for the worst part of your day</h2>
+        <p class="why__lead">
+          A breakdown is stressful enough. The last thing you need is a vague
+          price, an unknown mechanic, or a phone that keeps ringing. So we removed
+          all three.
+        </p>
+
+        <ul class="feature-list">
+          @for (feature of features; track feature.title) {
+            <li>
+              <span class="feature-list__icon">
+                <app-icon [name]="feature.icon" [size]="19" />
+              </span>
+              <div>
+                <strong>{{ feature.title }}</strong>
+                <p>{{ feature.description }}</p>
+              </div>
+            </li>
+          }
+        </ul>
+
+        <a routerLink="/register" class="btn btn-dark">
+          Create a free account
+          <app-icon name="arrow-right" [size]="17" />
+        </a>
+      </div>
+
+      <div class="why__visual">
+        <div class="quote-card">
+          <div class="quote-card__head">
+            <span class="badge badge--green">
+              <app-icon name="shield" [size]="12" />
+              Price locked
+            </span>
+            <span class="quote-card__id">Quote #MR-2481</span>
+          </div>
+
+          <h3>Puncture repair</h3>
+          <p class="quote-card__sub">Whitefield · 2.4 km away · Hero Splendor</p>
+
+          <div class="quote-card__rows">
+            <div><span>Service call</span><strong>₹149</strong></div>
+            <div><span>Tube replacement</span><strong>₹80</strong></div>
+            <div><span>Visit &amp; handling</span><strong>₹49</strong></div>
+          </div>
+
+          <div class="quote-card__total">
+            <span>Total, before you confirm</span>
+            <strong>₹278</strong>
+          </div>
+
+          <p class="quote-card__note">
+            <app-icon name="check" [size]="14" />
+            The final bill cannot go above this quote without your approval.
+          </p>
+        </div>
+
+        <div class="mechanic-card">
+          <span class="avatar avatar--green avatar--lg">RK</span>
+          <div>
+            <strong>Ravi Kumar</strong>
+            <span>★ 4.9 · 1,284 rescues · Hero Splendor specialist</span>
+          </div>
+          <span class="badge badge--green">
+            <app-icon name="shield" [size]="12" />
+            Verified
+          </span>
+        </div>
+
+        <div class="why__stamp">
+          <app-icon name="wallet" [size]="18" />
+          No hidden charges
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing --------------------------------------------------------------->
+  <section class="section section--cream" id="pricing">
+    <div class="container">
+      <div class="section-head section-head--center">
+        <span class="eyebrow">Pricing</span>
+        <h2>Pay for the rescue, not the anxiety</h2>
+        <p>
+          Every quote is shown upfront and approved by you. Choose pay-as-you-go,
+          or join Rescue+ for priority dispatch and a lower bill when things go wrong.
+        </p>
+      </div>
+
+      <div class="plans">
+        <article class="plan">
+          <div class="plan__top">
+            <span class="plan__label">Pay as you go</span>
+            <div class="plan__price"><strong>₹0</strong><span>/ month</span></div>
+            <p>Only pay when you actually need a mechanic.</p>
+          </div>
+
+          <ul class="plan__list">
+            <li><app-icon name="check" [size]="16" /> Upfront quote before dispatch</li>
+            <li><app-icon name="check" [size]="16" /> Verified mechanics near you</li>
+            <li><app-icon name="check" [size]="16" /> Live tracking and support</li>
+            <li><app-icon name="check" [size]="16" /> No subscription, cancel anytime</li>
+          </ul>
+
+          <a routerLink="/register" class="btn btn-outline btn-block">Get started free</a>
+        </article>
+
+        <article class="plan plan--featured">
+          <div class="plan__flag">Most popular</div>
+          <div class="plan__top">
+            <span class="plan__label">Rescue+</span>
+            <div class="plan__price"><strong>₹99</strong><span>/ month</span></div>
+            <p>For riders who would rather not think about it.</p>
+          </div>
+
+          <ul class="plan__list">
+            <li><app-icon name="check" [size]="16" /> Priority dispatch, ahead of the queue</li>
+            <li><app-icon name="check" [size]="16" /> Two free tows every year</li>
+            <li><app-icon name="check" [size]="16" /> 10% off parts and labour</li>
+            <li><app-icon name="check" [size]="16" /> Dedicated rescue desk line</li>
+            <li><app-icon name="check" [size]="16" /> Free annual bike health check</li>
+          </ul>
+
+          <a routerLink="/register" class="btn btn-primary btn-block">
+            Join Rescue+
+            <app-icon name="arrow-right" [size]="16" />
+          </a>
+        </article>
+      </div>
+
+      <p class="plans__note">
+        Sample estimates. Your final quote depends on the issue, parts, and
+        distance, and is always confirmed before a mechanic is dispatched.
+      </p>
+    </div>
+  </section>
+
+  <!-- Coverage -------------------------------------------------------------->
+  <section class="coverage" id="coverage">
+    <div class="coverage__glow" aria-hidden="true"></div>
+    <div class="container coverage__grid">
+      <div>
+        <span class="eyebrow">Coverage</span>
+        <h2>Live in six cities. Growing every month.</h2>
+        <p>
+          Our mechanics work in 38 zones across India, with a median arrival time
+          of 18 minutes. Outside a live zone? Join the waitlist and we will tell
+          you the moment we arrive.
+        </p>
+
+        <div class="coverage__cities">
+          @for (city of cities; track city) {
+            <span class="city-chip"><span class="dot"></span>{{ city }}</span>
+          }
+        </div>
+
+        <button type="button" class="btn btn-primary" (click)="joinWaitlist()">
+          Join the waitlist
+          <app-icon name="arrow-right" [size]="17" />
+        </button>
+      </div>
+
+      <div class="coverage__panel">
+        <div class="coverage__stat">
+          <strong>6</strong>
+          <span>Cities live today</span>
+        </div>
+        <div class="coverage__stat">
+          <strong>38</strong>
+          <span>Active rescue zones</span>
+        </div>
+        <div class="coverage__stat">
+          <strong>18</strong>
+          <span>Median minutes to arrive</span>
+        </div>
+        <div class="coverage__live">
+          <span class="live-dot"></span>
+          142 mechanics online right now
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Reviews --------------------------------------------------------------->
+  <section class="section" id="reviews">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Rider stories</span>
+        <h2>Rescued, then back on the road</h2>
+        <p>Real feedback from riders who used MotoRescue on a very bad day.</p>
+      </div>
+
+      <div class="reviews">
+        @for (review of testimonials; track review.name) {
+          <article class="review">
+            <div class="review__stars" aria-label="5 out of 5 stars">★★★★★</div>
+            <blockquote>“{{ review.quote }}”</blockquote>
+            <div class="review__author">
+              <span
+                class="avatar avatar--sm"
+                [class.avatar--brand]="review.tone === 'brand'"
+                [class.avatar--green]="review.tone === 'green'"
+                [class.avatar--blue]="review.tone === 'blue'"
+              >
+                {{ review.initials }}
+              </span>
+              <div>
+                <strong>{{ review.name }}</strong>
+                <span>{{ review.meta }}</span>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ ------------------------------------------------------------------->
+  <section class="section section--cream" id="support">
+    <div class="container faq-layout">
+      <div class="faq-layout__intro">
+        <span class="eyebrow">Support</span>
+        <h2>Questions, answered</h2>
+        <p>
+          Still unsure about something? Our rescue desk is staffed by humans who
+          ride, 24 hours a day.
+        </p>
+
+        <div class="support-card">
+          <span class="support-card__icon"><app-icon name="headset" [size]="20" /></span>
+          <div>
+            <strong>Talk to the rescue desk</strong>
+            <p>Average answer time: under 40 seconds.</p>
+            <div class="support-card__actions">
+              <a class="btn btn-dark btn-sm" href="tel:+918000000000">
+                <app-icon name="phone" [size]="15" />
+                Call now
+              </a>
+              <a class="btn btn-outline btn-sm" href="mailto:support@motorescue.com">Email us</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-list">
+        @for (faq of faqs; track faq.question) {
+          <details class="faq">
+            <summary>
+              <span>{{ faq.question }}</span>
+              <span class="faq__icon"><app-icon name="plus" [size]="18" /></span>
+            </summary>
+            <p>{{ faq.answer }}</p>
+          </details>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA ------------------------------------------------------------->
+  <section class="section">
+    <div class="container">
+      <div class="cta-band">
+        <div class="cta-band__pattern" aria-hidden="true"></div>
+        <div class="cta-band__copy">
+          <span class="eyebrow eyebrow--plain">Your next ride</span>
+          <h2>Your next breakdown does not have to be a crisis.</h2>
+          <p>Create a free account in under a minute. Help is already nearby.</p>
+        </div>
+        <div class="cta-band__actions">
+          <button type="button" class="btn btn-primary btn-lg" (click)="requestRescue()">
+            Request a rescue
+            <app-icon name="arrow-right" [size]="18" />
+          </button>
+          <a
+            routerLink="/register"
+            class="btn btn-light btn-lg"
+            [queryParams]="{ role: 'mechanic' }"
+          >
+            Join as a mechanic
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-site-footer />

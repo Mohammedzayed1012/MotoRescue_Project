@@ -1,0 +1,177 @@
+<app-auth-shell
+  panelTitle="Join the rescue network."
+  panelText="One account to request help, track mechanics, or earn as a verified partner — wherever the road takes you."
+  [heading]="heading()"
+  [subheading]="subheading()"
+  eyebrow="Create your account"
+>
+  <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (error()) {
+      <div class="alert alert--error" role="alert">
+        <app-icon name="alert" [size]="17" />
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <fieldset class="role-picker">
+      <legend class="sr-only">Choose your account type</legend>
+
+      @for (role of roles; track role.value) {
+        <label
+          class="role-card"
+          [class.role-card--active]="roleValue() === role.value"
+        >
+          <input type="radio" formControlName="role" [value]="role.value" />
+          <span class="role-card__icon"><app-icon [name]="role.icon" [size]="19" /></span>
+          <span class="role-card__copy">
+            <strong>{{ role.title }}</strong>
+            <small>{{ role.description }}</small>
+          </span>
+          <span class="role-card__tick"><app-icon name="check" [size]="12" /></span>
+        </label>
+      }
+    </fieldset>
+
+    @if (isMechanic()) {
+      <div class="alert alert--info role-note">
+        <app-icon name="shield" [size]="17" />
+        <span>
+          Mechanic applications are reviewed within 24 hours. You can explore
+          your workspace immediately after signing up.
+        </span>
+      </div>
+    }
+
+    <div class="field">
+      <label class="label" for="fullName">Full name</label>
+      <input
+        id="fullName"
+        class="input"
+        type="text"
+        formControlName="fullName"
+        autocomplete="name"
+        placeholder="e.g. Aarav Mehta"
+        [class.is-invalid]="!!fullNameError()"
+      />
+      @if (fullNameError()) {
+        <span class="error-text">{{ fullNameError() }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <label class="label" for="registerEmail">Email address</label>
+      <input
+        id="registerEmail"
+        class="input"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        placeholder="you@example.com"
+        [class.is-invalid]="!!emailError()"
+      />
+      @if (emailError()) {
+        <span class="error-text">{{ emailError() }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <label class="label" for="phone">Mobile number</label>
+      <input
+        id="phone"
+        class="input"
+        type="tel"
+        inputmode="tel"
+        formControlName="phone"
+        autocomplete="tel"
+        placeholder="98765 43210"
+        [class.is-invalid]="!!phoneError()"
+      />
+      @if (phoneError()) {
+        <span class="error-text">{{ phoneError() }}</span>
+      } @else {
+        <span class="hint">We use this only to reach you during a rescue.</span>
+      }
+    </div>
+
+    <div class="field">
+      <label class="label" for="registerPassword">Password</label>
+      <div class="input-wrap">
+        <input
+          id="registerPassword"
+          class="input"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="new-password"
+          placeholder="At least 8 characters"
+          [class.is-invalid]="!!passwordError()"
+        />
+        <button
+          type="button"
+          class="input-affix"
+          (click)="showPassword.set(!showPassword())"
+          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+        >
+          <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="18" />
+        </button>
+      </div>
+
+      <div class="strength" [attr.data-tone]="strength().tone">
+        <div class="strength__bars" aria-hidden="true">
+          @for (bar of [0, 1, 2, 3]; track bar) {
+            <span class="strength__bar" [class.is-filled]="bar < strength().score"></span>
+          }
+        </div>
+        <span class="strength__label">{{ strength().label }}</span>
+      </div>
+
+      @if (passwordError()) {
+        <span class="error-text">{{ passwordError() }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <label class="label" for="confirmPassword">Confirm password</label>
+      <input
+        id="confirmPassword"
+        class="input"
+        [type]="showPassword() ? 'text' : 'password'"
+        formControlName="confirmPassword"
+        autocomplete="new-password"
+        placeholder="Repeat your password"
+        [class.is-invalid]="!!confirmError()"
+      />
+      @if (confirmError()) {
+        <span class="error-text">{{ confirmError() }}</span>
+      }
+    </div>
+
+    <label class="check">
+      <input type="checkbox" formControlName="terms" />
+      <span class="check__box"><app-icon name="check" [size]="12" /></span>
+      <span class="check__text">
+        I agree to the
+        <a routerLink="/" fragment="support">Terms of Service</a> and
+        <a routerLink="/" fragment="support">Privacy Policy</a>.
+      </span>
+    </label>
+
+    @if (termsError()) {
+      <span class="error-text">Please accept the terms to continue.</span>
+    }
+
+    <button type="submit" class="btn btn-primary btn-block submit" [disabled]="loading()">
+      @if (loading()) {
+        <span class="spinner"></span>
+        Creating account…
+      } @else {
+        Create account
+        <app-icon name="arrow-right" [size]="17" />
+      }
+    </button>
+  </form>
+
+  <div class="switch">
+    Already have an account?
+    <a routerLink="/login">Log in</a>
+  </div>
+</app-auth-shell>
