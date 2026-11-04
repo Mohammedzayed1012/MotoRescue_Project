@@ -137,25 +137,25 @@ export class Home {
     {
       quote:
         'I was stranded on the ORR at 11pm with a flat. A mechanic reached me in 14 minutes, fixed it, and the price was exactly what the app quoted.',
-      name: 'Ananya Rao',
-      meta: 'Royal Enfield Classic · Bengaluru',
-      initials: 'AR',
+      name: 'Commuter rider',
+      meta: 'Bengaluru · Puncture rescue',
+      initials: 'CR',
       tone: 'brand',
     },
     {
       quote:
         'The live tracking is what sold me. I could see exactly where he was, and my parents could stop worrying. This is how roadside help should work.',
-      name: 'Karthik Menon',
-      meta: 'Honda Activa · Hyderabad',
-      initials: 'KM',
+      name: 'Weekend rider',
+      meta: 'Hyderabad · Battery rescue',
+      initials: 'WR',
       tone: 'green',
     },
     {
       quote:
         'My chain snapped on a weekend ride. One tap, a verified mechanic, and a clear estimate. Back on the road before the tea got cold.',
-      name: 'Sneha Patil',
-      meta: 'Yamaha MT-15 · Pune',
-      initials: 'SP',
+      name: 'Daily rider',
+      meta: 'Pune · Chain repair',
+      initials: 'DR',
       tone: 'blue',
     },
   ];

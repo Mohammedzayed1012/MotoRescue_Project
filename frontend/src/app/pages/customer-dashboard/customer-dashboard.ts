@@ -1,12 +1,22 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
+import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
-import { Bike, HistoryEntry, Mechanic, RequestStatus, RescueRequest } from '../../core/models';
+import { ApiRescueRequest, ApiUser, Bike, RequestStatus } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon, IconName } from '../../shared/icon/icon';
-import { MapPreview } from '../../shared/map-preview/map-preview';
+import { TrackingMap } from '../../shared/tracking-map/tracking-map';
 
 type RiderTab = 'overview' | 'request' | 'bikes' | 'history' | 'profile';
 
@@ -16,10 +26,22 @@ interface ServiceOption {
   icon: IconName;
 }
 
+interface HistoryRow {
+  id: string;
+  date: string;
+  service: string;
+  mechanic: string;
+  bike: string;
+  amount: string;
+  status: 'Completed' | 'Cancelled';
+}
+
+const ACTIVE_STATUSES: RequestStatus[] = ['SEARCHING', 'EN_ROUTE', 'ARRIVED'];
+
 @Component({
   selector: 'app-customer-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, DashboardShell, Icon, MapPreview],
+  imports: [ReactiveFormsModule, DashboardShell, Icon, TrackingMap],
   templateUrl: './customer-dashboard.html',
   styleUrl: './customer-dashboard.scss',
 })
@@ -28,6 +50,8 @@ export class CustomerDashboard {
   private readonly fb = inject(FormBuilder);
   private readonly toasts = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(ApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly navItems: NavItem[] = [
     { key: 'overview', label: 'Overview', icon: 'grid' },
@@ -38,11 +62,18 @@ export class CustomerDashboard {
   ];
 
   readonly activeTab = signal<RiderTab>('overview');
-  readonly request = signal<RescueRequest | null>(null);
+  readonly requests = signal<ApiRescueRequest[]>([]);
+  readonly bikes = signal<Bike[]>([]);
+  readonly mechanics = signal<ApiUser[]>([]);
+  readonly loading = signal(true);
   readonly requesting = signal(false);
   readonly addBikeOpen = signal(false);
   readonly historyQuery = signal('');
-  readonly isDemo = computed(() => this.auth.user()?.demo === true);
+  readonly locating = signal(false);
+  readonly liveLocation = signal(false);
+
+  private readonly liveLat = signal<number | null>(null);
+  private readonly liveLng = signal<number | null>(null);
 
   readonly serviceOptions: ServiceOption[] = [
     { id: 'puncture', label: 'Puncture & tyre repair', icon: 'tire' },
@@ -53,49 +84,43 @@ export class CustomerDashboard {
     { id: 'tow', label: 'Towing & recovery', icon: 'tow' },
   ];
 
-  readonly mechanics: Mechanic[] = [
-    {
-      id: 'ravi',
-      name: 'Ravi Kumar',
-      initials: 'RK',
-      rating: 4.9,
-      jobs: 1284,
-      distance: '1.2 km',
-      specialty: 'Puncture & battery',
-      verified: true,
-      tone: 'green',
-    },
-    {
-      id: 'imran',
-      name: 'Imran Shaikh',
-      initials: 'IS',
-      rating: 4.8,
-      jobs: 942,
-      distance: '2.4 km',
-      specialty: 'Engine & electrical',
-      verified: true,
-      tone: 'blue',
-    },
-    {
-      id: 'deepak',
-      name: 'Deepak Rao',
-      initials: 'DR',
-      rating: 4.7,
-      jobs: 611,
-      distance: '3.1 km',
-      specialty: 'Brakes & chains',
-      verified: true,
-      tone: 'brand',
-    },
-  ];
+  readonly request = computed<ApiRescueRequest | null>(
+    () => this.requests().find((item) => ACTIVE_STATUSES.includes(item.status)) ?? null,
+  );
 
-  readonly bikes = signal<Bike[]>([]);
-  readonly history = signal<HistoryEntry[]>([]);
+  readonly history = computed<HistoryRow[]>(() =>
+    this.requests()
+      .filter((item) => item.status === 'COMPLETED' || item.status === 'CANCELLED')
+      .map((item) => ({
+        id: item.reference,
+        date: this.formatDate(item.completedAt ?? item.cancelledAt ?? item.createdAt),
+        service: item.serviceLabel ?? 'Roadside assistance',
+        mechanic: item.mechanicName ?? '—',
+        bike: item.bikeLabel ?? '—',
+        amount: item.quote ?? '—',
+        status: item.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
+      })),
+  );
+
+  readonly recentHistory = computed(() => this.history().slice(0, 3));
+  readonly primaryBike = computed(
+    () => this.bikes().find((bike) => bike.primaryBike) ?? this.bikes()[0] ?? null,
+  );
+
+  readonly mechanicsNear = computed(() =>
+    [...this.mechanics()]
+      .sort((a, b) => Number(b.online) - Number(a.online) || b.totalJobs - a.totalJobs)
+      .slice(0, 3),
+  );
+
+  readonly onlineMechanics = computed(
+    () => this.mechanics().filter((mechanic) => mechanic.online).length,
+  );
 
   readonly requestForm = this.fb.nonNullable.group({
     service: ['puncture', [Validators.required]],
-    bike: ['Other bike', [Validators.required]],
-    location: [this.auth.user()?.demo ? 'Whitefield, Bengaluru' : '', [Validators.required]],
+    bike: ['other', [Validators.required]],
+    location: ['', [Validators.required]],
     notes: [''],
   });
 
@@ -151,15 +176,13 @@ export class CustomerDashboard {
   readonly requestStatus = computed(() => {
     const status = this.request()?.status;
     switch (status) {
-      case 'searching':
+      case 'SEARCHING':
         return { label: 'Finding a mechanic', tone: 'amber' };
-      case 'assigned':
-        return { label: 'Mechanic assigned', tone: 'blue' };
-      case 'en_route':
+      case 'EN_ROUTE':
         return { label: 'On the way', tone: 'brand' };
-      case 'arrived':
+      case 'ARRIVED':
         return { label: 'Arrived', tone: 'green' };
-      case 'completed':
+      case 'COMPLETED':
         return { label: 'Completed', tone: 'green' };
       default:
         return { label: 'No active rescue', tone: 'neutral' };
@@ -175,23 +198,19 @@ export class CustomerDashboard {
 
   readonly activeStep = computed(() => {
     const status = this.request()?.status;
-    const order: Record<RequestStatus, number> = {
-      searching: 0,
-      assigned: 1,
-      en_route: 2,
-      arrived: 3,
-      completed: 4,
+    const order: Record<string, number> = {
+      SEARCHING: 0,
+      EN_ROUTE: 2,
+      ARRIVED: 3,
+      COMPLETED: 4,
     };
-    return status ? order[status] : -1;
+    return status ? (order[status] ?? -1) : -1;
   });
 
   readonly selectedService = computed(() => {
     const id = this.requestForm.controls.service.value;
     return this.serviceOptions.find((option) => option.id === id) ?? this.serviceOptions[0];
   });
-
-  readonly recentHistory = computed(() => this.history().slice(0, 3));
-  readonly primaryBike = computed(() => this.bikes()[0] ?? null);
 
   readonly filteredHistory = computed(() => {
     const query = this.historyQuery().trim().toLowerCase();
@@ -205,86 +224,6 @@ export class CustomerDashboard {
   });
 
   constructor() {
-    const demo = this.auth.user()?.demo === true;
-
-    if (demo) {
-      this.bikes.set([
-        {
-          id: 'bike-1',
-          name: 'Hero Splendor Plus',
-          regNo: 'KA 05 AB 1234',
-          year: '2021',
-          odometer: '24,300 km',
-          tone: 'brand',
-        },
-        {
-          id: 'bike-2',
-          name: 'Royal Enfield Classic 350',
-          regNo: 'KA 05 CD 5678',
-          year: '2019',
-          odometer: '41,800 km',
-          tone: 'green',
-        },
-      ]);
-
-      this.requestForm.controls.bike.setValue(
-        `${this.bikes()[0].name} · ${this.bikes()[0].regNo}`,
-      );
-
-      this.history.set([
-        {
-          id: 'MR-2418',
-          date: '12 Oct 2026',
-          service: 'Puncture repair',
-          mechanic: 'Ravi Kumar',
-          bike: 'Hero Splendor',
-          amount: '₹278',
-          status: 'Completed',
-        },
-        {
-          id: 'MR-2377',
-          date: '28 Sep 2026',
-          service: 'Battery jump-start',
-          mechanic: 'Imran Shaikh',
-          bike: 'Classic 350',
-          amount: '₹249',
-          status: 'Completed',
-        },
-        {
-          id: 'MR-2290',
-          date: '03 Aug 2026',
-          service: 'Chain adjustment',
-          mechanic: 'Deepak Rao',
-          bike: 'Hero Splendor',
-          amount: '₹229',
-          status: 'Completed',
-        },
-        {
-          id: 'MR-2214',
-          date: '19 Jun 2026',
-          service: 'Fuel delivery',
-          mechanic: 'Ravi Kumar',
-          bike: 'Classic 350',
-          amount: '₹199',
-          status: 'Completed',
-        },
-      ]);
-
-      this.request.set({
-        id: 'MR-2481',
-        service: 'Puncture & tyre repair',
-        icon: 'tire',
-        bike: 'Hero Splendor Plus · KA 05 AB 1234',
-        location: 'Whitefield, Bengaluru',
-        status: 'en_route',
-        eta: '8 min',
-        price: '₹180 – ₹240',
-        note: 'Rear tyre losing pressure. Pulled over near the Forum mall underpass.',
-        mechanic: this.mechanics[0],
-        createdAt: 'Today, 4:12 PM',
-      });
-    }
-
     const tab = this.route.snapshot.queryParamMap.get('tab');
     if (tab === 'request' || tab === 'bikes' || tab === 'history' || tab === 'profile') {
       this.activeTab.set(tab);
@@ -294,6 +233,12 @@ export class CustomerDashboard {
     if (service && this.serviceOptions.some((option) => option.id === service)) {
       this.requestForm.controls.service.setValue(service);
     }
+
+    this.loadAll();
+
+    interval(3000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadRequests());
   }
 
   setTab(tab: string): void {
@@ -308,51 +253,109 @@ export class CustomerDashboard {
       return;
     }
 
-    this.requesting.set(true);
+    const riderId = this.auth.user()?.id;
+    if (!riderId) {
+      this.toasts.show('Please log in again to request a rescue.', 'error');
+      return;
+    }
+
     const value = this.requestForm.getRawValue();
     const service = this.serviceOptions.find((option) => option.id === value.service);
+    const selectedBike = this.bikes().find((bike) => String(bike.id) === value.bike);
+    const bikeLabel = selectedBike
+      ? `${selectedBike.name} · ${selectedBike.regNo}`
+      : 'Other bike';
 
-    setTimeout(() => {
-      this.request.set({
-        id: `MR-${Math.floor(2500 + Math.random() * 400)}`,
-        service: service?.label ?? 'Roadside assistance',
+    this.requesting.set(true);
+
+    this.api
+      .createRequest({
+        riderId,
+        serviceId: value.service,
+        serviceLabel: service?.label ?? 'Roadside assistance',
         icon: service?.icon ?? 'wrench',
-        bike: value.bike,
-        location: value.location,
-        status: 'searching',
-        eta: '—',
-        price: 'Quote on accept',
-        note: value.notes,
-        createdAt: 'Just now',
+        bikeLabel,
+        location: value.location.trim(),
+        latitude: this.liveLat(),
+        longitude: this.liveLng(),
+        notes: value.notes.trim(),
+      })
+      .subscribe({
+        next: () => {
+          this.requesting.set(false);
+          this.activeTab.set('overview');
+          this.requestForm.controls.notes.reset('');
+          this.toasts.show(
+            'Request sent. Your mechanic can see it right now.',
+            'success',
+          );
+          this.loadRequests();
+        },
+        error: (error: unknown) => {
+          this.requesting.set(false);
+          this.toasts.show(this.errorMessage(error, 'Could not send your request.'), 'error');
+        },
       });
-
-      this.requesting.set(false);
-      this.activeTab.set('overview');
-      this.toasts.show('Request sent. We are finding the closest mechanic.', 'success');
-
-      setTimeout(() => {
-        const current = this.request();
-        if (!current || current.status !== 'searching') return;
-
-        this.request.set({
-          ...current,
-          status: 'en_route',
-          eta: '11 min',
-          price: '₹249 – ₹320',
-          mechanic: this.mechanics[0],
-        });
-        this.toasts.show('Ravi Kumar accepted your request and is on the way.', 'info');
-      }, 6000);
-    }, 900);
   }
 
   cancelRequest(): void {
-    this.request.set(null);
-    this.toasts.show('Rescue request cancelled. You can request again anytime.', 'info');
+    const request = this.request();
+    const riderId = this.auth.user()?.id;
+    if (!request || !riderId) return;
+
+    this.api.cancelRequest(request.id, riderId).subscribe({
+      next: () => {
+        this.toasts.show('Rescue request cancelled. You can request again anytime.', 'info');
+        this.loadRequests();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not cancel the request.'), 'error');
+      },
+    });
   }
 
   callSupport(): void {
     this.toasts.show('Connecting you to the 24/7 rescue desk…', 'info');
+  }
+
+  useLiveLocation(): void {
+    if (this.locating()) return;
+
+    if (!navigator.geolocation) {
+      this.toasts.show('Live location is not available in this browser. Type your area instead.', 'info');
+      return;
+    }
+
+    this.locating.set(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        this.liveLat.set(lat);
+        this.liveLng.set(lng);
+
+        const label = this.describeCoordinates(lat, lng);
+        this.requestForm.controls.location.setValue(label);
+        this.requestForm.controls.location.markAsTouched();
+        this.liveLocation.set(true);
+        this.locating.set(false);
+
+        this.toasts.show(
+          'Live location captured. Your mechanic will navigate straight to your pin.',
+          'success',
+        );
+      },
+      () => {
+        this.locating.set(false);
+        this.toasts.show(
+          'Location permission was not granted. Type your area or landmark instead.',
+          'info',
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
   }
 
   addBike(): void {
@@ -361,32 +364,54 @@ export class CustomerDashboard {
       return;
     }
 
+    const riderId = this.auth.user()?.id;
+    if (!riderId) return;
+
     const value = this.addBikeForm.getRawValue();
-    this.bikes.update((bikes) => [
-      ...bikes,
-      {
-        id: `bike-${Date.now()}`,
+
+    this.api
+      .addBike({
+        ownerId: riderId,
         name: value.name.trim(),
         regNo: value.regNo.toUpperCase().trim(),
-        year: value.year,
+        year: value.year.trim(),
         odometer: '0 km',
-        tone: 'blue',
-      },
-    ]);
-
-    this.addBikeForm.reset();
-    this.addBikeOpen.set(false);
-    this.toasts.show('Bike added to your garage.', 'success');
+      })
+      .subscribe({
+        next: () => {
+          this.addBikeForm.reset();
+          this.addBikeOpen.set(false);
+          this.toasts.show('Bike added to your garage.', 'success');
+          this.loadBikes();
+        },
+        error: (error: unknown) => {
+          this.toasts.show(this.errorMessage(error, 'Could not save this bike.'), 'error');
+        },
+      });
   }
 
   removeBike(bike: Bike): void {
-    this.bikes.update((bikes) => bikes.filter((item) => item.id !== bike.id));
-    this.toasts.show(`${bike.name} removed from your garage.`, 'info');
+    this.api.removeBike(bike.id).subscribe({
+      next: () => {
+        this.toasts.show(`${bike.name} removed from your garage.`, 'info');
+        this.loadBikes();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not remove this bike.'), 'error');
+      },
+    });
   }
 
   makePrimary(bike: Bike): void {
-    this.bikes.update((bikes) => [bike, ...bikes.filter((item) => item.id !== bike.id)]);
-    this.toasts.show(`${bike.name} is now your primary bike.`, 'success');
+    this.api.makePrimaryBike(bike.id).subscribe({
+      next: () => {
+        this.toasts.show(`${bike.name} is now your primary bike.`, 'success');
+        this.loadBikes();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not update your primary bike.'), 'error');
+      },
+    });
   }
 
   saveProfile(): void {
@@ -395,12 +420,195 @@ export class CustomerDashboard {
       return;
     }
 
+    const id = this.auth.user()?.id;
+    if (!id) return;
+
     const value = this.profileForm.getRawValue();
-    this.auth.updateProfile({ fullName: value.fullName.trim(), phone: value.phone });
-    this.toasts.show('Account details updated.', 'success');
+
+    this.api
+      .updateUser(id, { fullName: value.fullName.trim(), phone: value.phone.trim() })
+      .subscribe({
+        next: (user) => {
+          this.auth.applyUser(user);
+          this.toasts.show('Account details updated.', 'success');
+        },
+        error: (error: unknown) => {
+          this.toasts.show(this.errorMessage(error, 'Could not update your details.'), 'error');
+        },
+      });
+  }
+
+  locationError(): string {
+    const control = this.requestForm.controls.location;
+    if (!control.touched || !control.invalid) return '';
+    return 'Tell us where you are so we can send the closest mechanic.';
+  }
+
+  bikeNameError(): string {
+    const control = this.addBikeForm.controls.name;
+    if (!control.touched) return '';
+    if (control.hasError('required')) return 'Enter the bike model.';
+    if (control.hasError('minlength')) return 'Use at least 2 characters.';
+    return '';
+  }
+
+  bikeRegError(): string {
+    const control = this.addBikeForm.controls.regNo;
+    if (!control.touched) return '';
+    if (control.hasError('required')) return 'Enter the registration number.';
+    if (control.hasError('minlength')) return 'Enter the full registration number.';
+    return '';
+  }
+
+  bikeYearError(): string {
+    const control = this.addBikeForm.controls.year;
+    if (!control.touched) return '';
+    return control.hasError('required') ? 'Enter the model year.' : '';
+  }
+
+  profileNameError(): string {
+    const control = this.profileForm.controls.fullName;
+    if (!control.touched) return '';
+    if (control.hasError('required')) return 'Enter your full name.';
+    if (control.hasError('minlength')) return 'Use at least 2 characters.';
+    return '';
+  }
+
+  profilePhoneError(): string {
+    const control = this.profileForm.controls.phone;
+    if (!control.touched) return '';
+    return control.hasError('required') ? 'Enter a mobile number riders can reach.' : '';
   }
 
   upgrade(): void {
     this.toasts.show('Rescue+ checkout is coming soon. Your current plan is unchanged.', 'info');
+  }
+
+  initialsFor(name?: string): string {
+    if (!name) return 'MR';
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
+  }
+
+  private loadAll(): void {
+    this.loadRequests();
+    this.loadBikes();
+    this.loadMechanics();
+  }
+
+  private loadRequests(): void {
+    const riderId = this.auth.user()?.id;
+    if (!riderId) {
+      this.loading.set(false);
+      return;
+    }
+
+    const before = this.request();
+
+    this.api.riderRequests(riderId).subscribe({
+      next: (requests) => {
+        this.requests.set(requests);
+        this.loading.set(false);
+
+        const after = this.request();
+        if (before && after && before.id === after.id && before.status !== after.status) {
+          if (after.status === 'EN_ROUTE') {
+            this.toasts.show(
+              `${after.mechanicName ?? 'Your mechanic'} accepted your request and is on the way.`,
+              'success',
+            );
+          } else if (after.status === 'ARRIVED') {
+            this.toasts.show('Your mechanic has arrived at your location.', 'success');
+          } else if (after.status === 'COMPLETED') {
+            this.toasts.show('Rescue completed. Your receipt is in rescue history.', 'success');
+          }
+        }
+
+        if (!before && after && after.status === 'EN_ROUTE') {
+          this.toasts.show(
+            `${after.mechanicName ?? 'Your mechanic'} accepted your request and is on the way.`,
+            'success',
+          );
+        }
+      },
+      error: () => {
+        this.loading.set(false);
+      },
+    });
+  }
+
+  private loadBikes(): void {
+    const riderId = this.auth.user()?.id;
+    if (!riderId) return;
+
+    this.api.bikes(riderId).subscribe({
+      next: (bikes) => {
+        this.bikes.set(bikes);
+        const current = this.requestForm.controls.bike.value;
+        const exists = bikes.some((bike) => String(bike.id) === current);
+        if (!exists) {
+          this.requestForm.controls.bike.setValue(bikes[0] ? String(bikes[0].id) : 'other');
+        }
+      },
+      error: () => {
+        // The form still allows "Other bike" if the garage cannot be loaded.
+      },
+    });
+  }
+
+  private loadMechanics(): void {
+    this.api.mechanics().subscribe({
+      next: (mechanics) => this.mechanics.set(mechanics),
+      error: () => this.mechanics.set([]),
+    });
+  }
+
+  private describeCoordinates(lat: number, lng: number): string {
+    const areas = [
+      { name: 'Whitefield, Bengaluru', lat: 12.9698, lng: 77.7499 },
+      { name: 'Indiranagar, Bengaluru', lat: 12.9719, lng: 77.6412 },
+      { name: 'Koramangala, Bengaluru', lat: 12.9352, lng: 77.6245 },
+      { name: 'HSR Layout, Bengaluru', lat: 12.9121, lng: 77.6446 },
+      { name: 'Jayanagar, Bengaluru', lat: 12.9299, lng: 77.5826 },
+      { name: 'Hebbal, Bengaluru', lat: 13.0358, lng: 77.597 },
+      { name: 'Electronic City, Bengaluru', lat: 12.8452, lng: 77.6602 },
+    ];
+
+    let nearest = areas[0];
+    let best = Number.POSITIVE_INFINITY;
+
+    for (const area of areas) {
+      const distance = Math.hypot(area.lat - lat, area.lng - lng);
+      if (distance < best) {
+        best = distance;
+        nearest = area;
+      }
+    }
+
+    if (best < 0.14) {
+      return nearest.name;
+    }
+
+    return `Live pin · ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  }
+
+  private formatDate(value?: string): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  }
+
+  private errorMessage(error: unknown, fallback: string): string {
+    const message = (error as { error?: { message?: string } })?.error?.message;
+    return typeof message === 'string' && message ? message : fallback;
   }
 }

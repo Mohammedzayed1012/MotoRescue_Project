@@ -52,7 +52,6 @@ export class DashboardShell {
   });
 
   readonly email = computed(() => this.auth.user()?.email ?? '');
-  readonly isDemo = computed(() => this.auth.user()?.demo === true);
 
   select(key: string): void {
     this.activeChange.emit(key);

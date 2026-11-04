@@ -28,7 +28,7 @@
           <div>
             <span class="stat__label">Today's earnings</span>
             <strong>₹{{ earningsToday() }}</strong>
-            <small class="stat__trend">+18% vs yesterday</small>
+            <small class="stat__trend">{{ jobsToday() }} completed today</small>
           </div>
         </article>
 
@@ -45,17 +45,17 @@
           <span class="stat__icon stat__icon--amber"><app-icon name="star" [size]="18" /></span>
           <div>
             <span class="stat__label">Rider rating</span>
-            <strong>4.9</strong>
-            <small>1,284 reviews</small>
+            <strong>{{ auth.user()?.rating || '—' }}</strong>
+            <small>{{ auth.user()?.totalJobs ?? 0 }} rescues</small>
           </div>
         </article>
 
         <article class="stat">
-          <span class="stat__icon stat__icon--blue"><app-icon name="activity" [size]="18" /></span>
+          <span class="stat__icon stat__icon--blue"><app-icon name="wallet" [size]="18" /></span>
           <div>
-            <span class="stat__label">Acceptance rate</span>
-            <strong>96%</strong>
-            <small>Last 30 days</small>
+            <span class="stat__label">Lifetime earnings</span>
+            <strong>₹{{ lifetimeEarnings() }}</strong>
+            <small>Completed jobs</small>
           </div>
         </article>
       </div>
@@ -74,10 +74,10 @@
                 </div>
 
                 <div class="incoming__service">
-                  <span class="incoming__icon"><app-icon [name]="job.icon" [size]="23" /></span>
+                  <span class="incoming__icon"><app-icon [name]="$any(job.icon || 'wrench')" [size]="23" /></span>
                   <div class="incoming__copy">
-                    <h2>{{ job.service }}</h2>
-                    <p>{{ job.vehicle }}</p>
+                    <h2>{{ job.serviceLabel }}</h2>
+                    <p>{{ job.bikeLabel }}</p>
                   </div>
                   <div class="incoming__payout">
                     <strong>₹{{ job.payout }}</strong>
@@ -86,14 +86,14 @@
                 </div>
 
                 <div class="incoming__grid">
-                  <div><span>Customer</span><strong>{{ job.customer }}</strong></div>
-                  <div><span>Distance</span><strong>{{ job.distance }} · ~{{ job.eta }}</strong></div>
-                  <div><span>Request</span><strong>#{{ job.id }}</strong></div>
+                  <div><span>Customer</span><strong>{{ job.riderName }}</strong></div>
+                  <div><span>Distance</span><strong>{{ job.distance }} · ~{{ job.etaMinutes }} min</strong></div>
+                  <div><span>Request</span><strong>{{ job.reference }}</strong></div>
                 </div>
 
                 <p class="incoming__note">
                   <app-icon name="message" [size]="15" />
-                  “{{ job.note }}”
+                  “{{ job.notes || 'Rider is waiting at the pinned location.' }}”
                 </p>
 
                 <div class="incoming__actions">
@@ -131,36 +131,36 @@
           @if (active(); as job) {
             <section class="card active-job">
               <div class="active-job__head">
-                <span class="badge" [class.badge--brand]="job.status === 'en_route'" [class.badge--green]="job.status === 'arrived'">
+                <span class="badge" [class.badge--brand]="job.status === 'EN_ROUTE'" [class.badge--green]="job.status === 'ARRIVED'">
                   <span class="dot"></span>
-                  {{ job.status === 'en_route' ? 'On the way' : 'At the location' }}
+                  {{ job.status === 'EN_ROUTE' ? 'On the way' : 'At the location' }}
                 </span>
-                <span class="active-job__id">#{{ job.id }}</span>
+                <span class="active-job__id">{{ job.reference }}</span>
               </div>
 
               <div class="active-job__service">
-                <span class="active-job__icon"><app-icon [name]="job.icon" [size]="23" /></span>
+                <span class="active-job__icon"><app-icon [name]="$any(job.icon || 'wrench')" [size]="23" /></span>
                 <div>
-                  <h2>{{ job.service }}</h2>
-                  <p>{{ job.vehicle }}</p>
+                  <h2>{{ job.serviceLabel }}</h2>
+                  <p>{{ job.bikeLabel }}</p>
                 </div>
                 <div class="active-job__eta">
-                  <strong>{{ job.status === 'en_route' ? job.eta : 'Now' }}</strong>
-                  <span>{{ job.status === 'en_route' ? 'ETA' : 'On site' }}</span>
+                  <strong>{{ job.status === 'EN_ROUTE' ? (job.etaMinutes + ' min') : 'Now' }}</strong>
+                  <span>{{ job.status === 'EN_ROUTE' ? 'ETA' : 'On site' }}</span>
                 </div>
               </div>
 
               <div class="active-job__customer">
-                <span class="avatar avatar--brand">{{ job.initials }}</span>
+                <span class="avatar avatar--brand">{{ initialsFor(job.riderName) }}</span>
                 <div>
-                  <strong>{{ job.customer }}</strong>
-                  <span>{{ job.distance }} away · {{ job.note }}</span>
+                  <strong>{{ job.riderName }}</strong>
+                  <span>{{ job.location }} · {{ job.notes || 'Rider is waiting for you.' }}</span>
                 </div>
                 <div class="active-job__contact">
-                  <a class="icon-btn icon-btn--brand" href="tel:+918000000000" aria-label="Call the rider">
+                  <a class="icon-btn icon-btn--brand" [href]="'tel:' + (job.riderPhone || '+918000000000')" aria-label="Call the rider">
                     <app-icon name="phone" [size]="18" />
                   </a>
-                  <a class="icon-btn" href="sms:+918000000000" aria-label="Message the rider">
+                  <a class="icon-btn" [href]="'sms:' + (job.riderPhone || '+918000000000')" aria-label="Message the rider">
                     <app-icon name="message" [size]="18" />
                   </a>
                 </div>
@@ -173,9 +173,9 @@
               </div>
 
               <div class="active-job__actions">
-                <a class="btn btn-ghost btn-sm" href="tel:+918000000000">Call rider</a>
+                <a class="btn btn-ghost btn-sm" [href]="'tel:' + (job.riderPhone || '+918000000000')">Call rider</a>
                 <button type="button" class="btn btn-primary" (click)="advanceJob()">
-                  @if (job.status === 'en_route') {
+                  @if (job.status === 'EN_ROUTE') {
                     <app-icon name="pin" [size]="16" />
                     I have arrived
                   } @else {
@@ -191,15 +191,15 @@
             <section class="card">
               <div class="card-head">
                 <h3>Up next</h3>
-                <span class="badge badge--neutral">{{ queue().length }} queued</span>
+                <span class="badge badge--neutral">{{ queue().length }} waiting</span>
               </div>
               <ul class="queue">
                 @for (job of queue(); track job.id) {
                   <li>
-                    <span class="queue__icon"><app-icon [name]="job.icon" [size]="17" /></span>
+                    <span class="queue__icon"><app-icon [name]="$any(job.icon || 'wrench')" [size]="17" /></span>
                     <div>
-                      <strong>{{ job.service }}</strong>
-                      <span>{{ job.customer }} · {{ job.distance }} away</span>
+                      <strong>{{ job.serviceLabel }}</strong>
+                      <span>{{ job.riderName }} · {{ job.distance }} away</span>
                     </div>
                     <strong class="queue__payout">₹{{ job.payout }}</strong>
                   </li>
@@ -232,7 +232,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (job of recentJobs; track job.id) {
+                  @for (job of recentJobs(); track job.id) {
                     <tr>
                       <td><strong>{{ job.id }}</strong></td>
                       <td>{{ job.date }}</td>
@@ -269,18 +269,18 @@
 
             <ul class="availability__list">
               <li><span>Status</span><strong>{{ online() ? 'Online' : 'Offline' }}</strong></li>
-              <li><span>Service radius</span><strong>12 km</strong></li>
-              <li><span>Online since</span><strong>{{ online() ? '09:12' : '—' }}</strong></li>
+              <li><span>Service radius</span><strong>{{ profileForm.controls.radius.value }}</strong></li>
+              <li><span>Online since</span><strong>{{ online() ? 'Now' : '—' }}</strong></li>
             </ul>
           </section>
 
           <section class="earnings-mini">
             <span class="eyebrow eyebrow--plain">Today so far</span>
             <strong class="earnings-mini__value">₹{{ earningsToday() }}</strong>
-            <p>+18% from yesterday</p>
+            <p>{{ jobsToday() }} jobs completed</p>
 
             <div class="earnings-mini__bars" aria-hidden="true">
-              @for (bar of weekly; track bar.day) {
+              @for (bar of weekly(); track bar.day) {
                 <span [style.height.%]="bar.value"></span>
               }
             </div>
@@ -294,24 +294,31 @@
             <h3 class="side-title">Performance</h3>
             <div class="perf">
               <div class="perf__row">
-                <div><span>Acceptance rate</span><strong>96%</strong></div>
-                <div class="perf__track"><span style="width: 96%"></span></div>
+                <div><span>Completed rescues</span><strong>{{ auth.user()?.totalJobs ?? 0 }}</strong></div>
+                <div class="perf__track"><span style="width: 100%"></span></div>
               </div>
               <div class="perf__row">
-                <div><span>On-time arrivals</span><strong>98%</strong></div>
-                <div class="perf__track"><span style="width: 98%"></span></div>
+                <div><span>Rider rating</span><strong>{{ auth.user()?.rating || '—' }}</strong></div>
+                <div class="perf__track"><span [style.width.%]="(auth.user()?.rating ?? 0) * 20"></span></div>
               </div>
               <div class="perf__row">
-                <div><span>Five-star reviews</span><strong>91%</strong></div>
-                <div class="perf__track"><span style="width: 91%"></span></div>
+                <div><span>Live jobs</span><strong>{{ active() ? 1 : 0 }}</strong></div>
+                <div class="perf__track"><span [style.width.%]="active() ? 100 : 6"></span></div>
               </div>
             </div>
           </section>
 
           <section class="card card-pad verified">
-            <span class="badge badge--green"><app-icon name="shield" [size]="12" />Verified partner</span>
-            <h3 class="side-title">Documents current</h3>
-            <p>ID, licence, and workshop verification are valid until March 2027.</p>
+            <span class="badge" [class.badge--green]="auth.user()?.verified" [class.badge--amber]="!auth.user()?.verified">
+              <app-icon name="shield" [size]="12" />
+              {{ auth.user()?.verified ? 'Verified partner' : 'Verification pending' }}
+            </span>
+            <h3 class="side-title">{{ auth.user()?.verified ? 'Documents current' : 'Awaiting approval' }}</h3>
+            <p>
+              {{ auth.user()?.verified
+                ? 'Operations have approved your account. Keep your workshop details current.'
+                : 'An operations admin can verify you from the admin console.' }}
+            </p>
             <a class="verify-link" routerLink="/" fragment="support">
               View verification details
               <app-icon name="arrow-right" [size]="14" />
@@ -328,17 +335,17 @@
           <span class="stat__icon stat__icon--green"><app-icon name="trending-up" [size]="18" /></span>
           <div>
             <span class="stat__label">This week</span>
-            <strong>₹7,840</strong>
-            <small class="stat__trend">+18% vs last week</small>
+            <strong>₹{{ weekEarnings() }}</strong>
+            <small class="stat__trend">{{ weekJobs() }} jobs completed</small>
           </div>
         </article>
 
         <article class="stat">
           <span class="stat__icon stat__icon--amber"><app-icon name="wallet" [size]="18" /></span>
           <div>
-            <span class="stat__label">Pending payout</span>
-            <strong>₹3,420</strong>
-            <small>Arrives Friday</small>
+            <span class="stat__label">Average per job</span>
+            <strong>₹{{ averagePayout() }}</strong>
+            <small>Completed rescues</small>
           </div>
         </article>
 
@@ -346,8 +353,8 @@
           <span class="stat__icon stat__icon--blue"><app-icon name="activity" [size]="18" /></span>
           <div>
             <span class="stat__label">Lifetime earnings</span>
-            <strong>₹84,260</strong>
-            <small>Since Jan 2026</small>
+            <strong>₹{{ lifetimeEarnings() }}</strong>
+            <small>{{ completedJobs().length }} rescues</small>
           </div>
         </article>
       </div>
@@ -357,13 +364,13 @@
           <div class="card-head">
             <div>
               <h3>Weekly earnings</h3>
-              <p class="card-head__sub">Payouts after MotoRescue's 12% platform fee</p>
+              <p class="card-head__sub">Payout for every completed rescue</p>
             </div>
-            <span class="badge badge--green">+18% this week</span>
+            <span class="badge badge--green">{{ weekJobs() }} jobs this week</span>
           </div>
 
           <div class="chart">
-            @for (bar of weekly; track bar.day) {
+            @for (bar of weekly(); track bar.day) {
               <div class="chart__col">
                 <span class="chart__amount">{{ bar.amount }}</span>
                 <div class="chart__track">
@@ -375,26 +382,26 @@
           </div>
 
           <div class="chart-card__foot">
-            <span><app-icon name="calendar" [size]="15" /> Mon 28 Oct – Sun 03 Nov</span>
-            <strong>₹7,840 total</strong>
+            <span><app-icon name="calendar" [size]="15" /> {{ weekLabel() }}</span>
+            <strong>₹{{ weekEarnings() }} total</strong>
           </div>
         </section>
 
         <aside class="payout-card">
-          <span class="eyebrow eyebrow--plain">Next payout</span>
-          <strong class="payout-card__value">₹3,420</strong>
-          <p>Friday, 06 November</p>
+          <span class="eyebrow eyebrow--plain">Available this week</span>
+          <strong class="payout-card__value">₹{{ weekEarnings() }}</strong>
+          <p>{{ weekJobs() }} completed rescues</p>
 
           <div class="payout-card__rows">
-            <div><span>Completed jobs</span><strong>11</strong></div>
-            <div><span>Platform fee</span><strong>−₹468</strong></div>
-            <div><span>Tips</span><strong>₹240</strong></div>
+            <div><span>Completed jobs</span><strong>{{ completedJobs().length }}</strong></div>
+            <div><span>Average payout</span><strong>₹{{ averagePayout() }}</strong></div>
+            <div><span>Lifetime</span><strong>₹{{ lifetimeEarnings() }}</strong></div>
           </div>
 
           <button type="button" class="btn btn-light btn-block" (click)="withdraw()">
-            Request early payout
+            Request payout
           </button>
-          <small class="payout-card__note">No fee for standard Friday payouts.</small>
+          <small class="payout-card__note">Payouts are settled to your registered account.</small>
         </aside>
       </div>
 
@@ -402,7 +409,7 @@
         <div class="card-head">
           <div>
             <h3>Payout history</h3>
-            <p class="card-head__sub">Transferred to HDFC •••• 4821</p>
+            <p class="card-head__sub">Every completed rescue and its payout</p>
           </div>
           <span class="badge badge--neutral">INR</span>
         </div>
@@ -417,19 +424,23 @@
               </tr>
             </thead>
             <tbody>
-              @for (payout of payouts; track payout.id) {
+              @for (payout of payouts(); track payout.id) {
                 <tr>
                   <td><strong>{{ payout.id }}</strong></td>
                   <td>{{ payout.date }}</td>
                   <td>{{ payout.amount }}</td>
                   <td>
-                    <span
-                      class="badge"
-                      [class.badge--amber]="payout.status === 'Processing'"
-                      [class.badge--green]="payout.status === 'Paid'"
-                    >
-                      {{ payout.status }}
-                    </span>
+                    <span class="badge badge--green">{{ payout.status }}</span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4">
+                    <div class="empty-state">
+                      <app-icon name="wallet" [size]="24" />
+                      <h3>No payouts yet</h3>
+                      <p>Complete your first rescue and the payout will appear here.</p>
+                    </div>
                   </td>
                 </tr>
               }
@@ -448,33 +459,67 @@
               <h3>Partner details</h3>
               <p class="card-head__sub">Shown to riders once a job is accepted.</p>
             </div>
-            <span class="badge badge--green"><app-icon name="shield" [size]="12" />Verified</span>
+            <span class="badge" [class.badge--green]="auth.user()?.verified" [class.badge--amber]="!auth.user()?.verified">
+              <app-icon name="shield" [size]="12" />
+              {{ auth.user()?.verified ? 'Verified' : 'Pending' }}
+            </span>
           </div>
 
           <form class="profile-form card-pad" [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
             <div class="mechanic-identity">
-              <span class="avatar avatar--lg avatar--green">{{ auth.user()?.fullName?.charAt(0) }}</span>
+              <span class="avatar avatar--lg avatar--green">{{ initialsFor(auth.user()?.fullName) }}</span>
               <div>
                 <strong>{{ auth.user()?.fullName }}</strong>
-                <span>★ 4.9 · 1,284 rescues · Whitefield, Bengaluru</span>
+                <span>
+                  {{ auth.user()?.rating || '—' }} rating · {{ auth.user()?.totalJobs ?? 0 }} rescues ·
+                  {{ auth.user()?.workshop || auth.user()?.city || 'Mechanic partner' }}
+                </span>
               </div>
             </div>
 
             <div class="form-row">
               <div class="field">
                 <label class="label" for="mechName">Full name</label>
-                <input id="mechName" class="input" formControlName="fullName" autocomplete="name" />
+                <input
+                  id="mechName"
+                  class="input"
+                  formControlName="fullName"
+                  autocomplete="name"
+                  [class.is-invalid]="!!fullNameError()"
+                />
+                @if (fullNameError()) {
+                  <span class="error-text">{{ fullNameError() }}</span>
+                }
               </div>
               <div class="field">
                 <label class="label" for="mechPhone">Mobile number</label>
-                <input id="mechPhone" class="input" formControlName="phone" type="tel" autocomplete="tel" />
+                <input
+                  id="mechPhone"
+                  class="input"
+                  formControlName="phone"
+                  type="tel"
+                  autocomplete="tel"
+                  [class.is-invalid]="!!phoneError()"
+                />
+                @if (phoneError()) {
+                  <span class="error-text">{{ phoneError() }}</span>
+                }
               </div>
             </div>
 
             <div class="field">
               <label class="label" for="workshop">Workshop or base location</label>
-              <input id="workshop" class="input" formControlName="workshop" />
-              <span class="hint">Riders see the approximate area, never your exact address.</span>
+              <input
+                id="workshop"
+                class="input"
+                formControlName="workshop"
+                [class.is-invalid]="!!workshopError()"
+              />
+              @if (workshopError()) {
+                <span class="error-text">{{ workshopError() }}</span>
+              } @else {
+                <span class="hint">Riders see the approximate area, never your exact address.</span>
+              }
             </div>
 
             <div class="field">
@@ -494,28 +539,41 @@
           <section class="card card-pad">
             <h3 class="side-title">At a glance</h3>
             <div class="glance">
-              <div><strong>1,284</strong><span>Rescues completed</span></div>
-              <div><strong>4.9</strong><span>Average rating</span></div>
-              <div><strong>3 yrs</strong><span>On MotoRescue</span></div>
+              <div><strong>{{ auth.user()?.totalJobs ?? 0 }}</strong><span>Rescues completed</span></div>
+              <div><strong>{{ auth.user()?.rating || '—' }}</strong><span>Average rating</span></div>
+              <div><strong>{{ joinedLabel() }}</strong><span>Partner since</span></div>
             </div>
           </section>
 
           <section class="card card-pad">
-            <h3 class="side-title">Service areas</h3>
+            <h3 class="side-title">Coverage</h3>
             <div class="area-chips">
-              @for (area of ['Whitefield', 'Indiranagar', 'Koramangala', 'HSR Layout', 'Marathahalli']; track area) {
-                <span class="area-chip">{{ area }}</span>
+              @if (auth.user()?.workshop) {
+                <span class="area-chip">{{ auth.user()?.workshop }}</span>
               }
+              @if (auth.user()?.city) {
+                <span class="area-chip">{{ auth.user()?.city }}</span>
+              }
+              <span class="area-chip">{{ profileForm.controls.radius.value }} radius</span>
             </div>
-            <p class="side-note">Zones update automatically with your live location.</p>
+            <p class="side-note">Update your workshop and radius to control the jobs you receive.</p>
           </section>
 
           <section class="card card-pad">
             <h3 class="side-title">Documents</h3>
             <ul class="docs">
-              <li><span><app-icon name="check" [size]="13" /></span>Government ID <strong>Verified</strong></li>
-              <li><span><app-icon name="check" [size]="13" /></span>Driving licence <strong>Verified</strong></li>
-              <li><span><app-icon name="check" [size]="13" /></span>Workshop certification <strong>Verified</strong></li>
+              <li>
+                <span><app-icon [name]="auth.user()?.verified ? 'check' : 'clock'" [size]="13" /></span>
+                Government ID <strong>{{ auth.user()?.verified ? 'Verified' : 'Pending' }}</strong>
+              </li>
+              <li>
+                <span><app-icon [name]="auth.user()?.verified ? 'check' : 'clock'" [size]="13" /></span>
+                Driving licence <strong>{{ auth.user()?.verified ? 'Verified' : 'Pending' }}</strong>
+              </li>
+              <li>
+                <span><app-icon [name]="auth.user()?.verified ? 'check' : 'clock'" [size]="13" /></span>
+                Workshop certification <strong>{{ auth.user()?.verified ? 'Verified' : 'Pending' }}</strong>
+              </li>
             </ul>
           </section>
         </aside>

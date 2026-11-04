@@ -1,6 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
+import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
+import { ApiRescueRequest, ApiUser, PlatformStats } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon, IconName } from '../../shared/icon/icon';
 
@@ -9,11 +20,13 @@ type RequestFilter = 'all' | 'searching' | 'in_progress' | 'completed' | 'cancel
 type RequestStatus = Exclude<RequestFilter, 'all'>;
 
 interface AdminRequest {
-  id: string;
+  id: number;
+  reference: string;
   rider: string;
   city: string;
   service: string;
   mechanic: string;
+  mechanicId?: number;
   status: RequestStatus;
   label: string;
   amount: string;
@@ -21,16 +34,23 @@ interface AdminRequest {
 }
 
 interface AdminMechanic {
-  id: string;
+  id: number;
   name: string;
   initials: string;
   city: string;
   zone: string;
   jobs: number;
   rating: number;
-  status: 'Verified' | 'Pending' | 'Review';
+  online: boolean;
+  status: 'Verified' | 'Pending';
   joined: string;
-  tone: 'brand' | 'green' | 'blue';
+}
+
+interface ActivityItem {
+  icon: IconName;
+  text: string;
+  time: string;
+  tone: 'green' | 'blue' | 'amber' | 'brand';
 }
 
 interface SettingItem {
@@ -40,6 +60,8 @@ interface SettingItem {
   enabled: boolean;
   icon: IconName;
 }
+
+const SETTINGS_KEY = 'motorescue.admin.settings';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -51,17 +73,32 @@ interface SettingItem {
 export class AdminDashboard {
   readonly auth = inject(AuthService);
   private readonly toasts = inject(ToastService);
+  private readonly api = inject(ApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<AdminTab>('overview');
   readonly requestFilter = signal<RequestFilter>('all');
   readonly requestQuery = signal('');
+  readonly loading = signal(true);
 
-  readonly navItems: NavItem[] = [
-    { key: 'overview', label: 'Overview', icon: 'grid' },
-    { key: 'requests', label: 'Rescue requests', icon: 'route', badge: '24' },
-    { key: 'mechanics', label: 'Mechanics', icon: 'users' },
-    { key: 'settings', label: 'Settings', icon: 'settings' },
-  ];
+  readonly users = signal<ApiUser[]>([]);
+  readonly requests = signal<AdminRequest[]>([]);
+  readonly stats = signal<PlatformStats | null>(null);
+
+  readonly navItems = computed<NavItem[]>(() => {
+    const active = this.stats()?.activeRequests ?? 0;
+    return [
+      { key: 'overview', label: 'Overview', icon: 'grid' },
+      {
+        key: 'requests',
+        label: 'Rescue requests',
+        icon: 'route',
+        badge: active > 0 ? String(active) : undefined,
+      },
+      { key: 'mechanics', label: 'Mechanics', icon: 'users' },
+      { key: 'settings', label: 'Settings', icon: 'settings' },
+    ];
+  });
 
   readonly pageTitle = computed(() => {
     switch (this.activeTab()) {
@@ -83,271 +120,135 @@ export class AdminDashboard {
       case 'mechanics':
         return 'Verify partners, review performance, and manage coverage.';
       case 'settings':
-        return 'Dispatch rules, notifications, and safety controls.';
+        return 'Dispatch preferences for this operations console.';
       default:
-        return 'A live view of rescues, mechanics, and service health.';
+        return 'A live view of rescues, mechanics, and rider activity.';
     }
   });
 
-  readonly kpis = [
-    {
-      label: 'Active requests',
-      value: '24',
-      hint: '6 awaiting assignment',
-      icon: 'activity' as IconName,
-      tone: 'brand',
-    },
-    {
-      label: 'Mechanics online',
-      value: '38',
-      hint: 'of 52 active partners',
-      icon: 'users' as IconName,
-      tone: 'green',
-    },
-    {
-      label: 'Avg response',
-      value: '16 min',
-      hint: 'Target under 20 min',
-      icon: 'timer' as IconName,
-      tone: 'amber',
-    },
-    {
-      label: 'Revenue today',
-      value: '₹42,300',
-      hint: '+12% vs last Tuesday',
-      icon: 'wallet' as IconName,
-      tone: 'blue',
-    },
-  ];
+  readonly kpis = computed(() => {
+    const stats = this.stats();
+    return [
+      {
+        label: 'Active requests',
+        value: String(stats?.activeRequests ?? 0),
+        hint: `${stats?.searching ?? 0} awaiting assignment`,
+        icon: 'activity' as IconName,
+        tone: 'brand',
+      },
+      {
+        label: 'Mechanics online',
+        value: String(stats?.mechanicsOnline ?? 0),
+        hint: `of ${stats?.mechanicsTotal ?? 0} partners`,
+        icon: 'users' as IconName,
+        tone: 'green',
+      },
+      {
+        label: 'Avg response',
+        value: `${stats?.avgResponseMinutes ?? 0} min`,
+        hint: 'From request to accept',
+        icon: 'timer' as IconName,
+        tone: 'amber',
+      },
+      {
+        label: 'Revenue today',
+        value: `₹${stats?.revenueToday ?? 0}`,
+        hint: `${stats?.completedToday ?? 0} completed today`,
+        icon: 'wallet' as IconName,
+        tone: 'blue',
+      },
+    ];
+  });
 
-  readonly chart = [
-    { day: 'Mon', value: 46, count: 38 },
-    { day: 'Tue', value: 62, count: 52 },
-    { day: 'Wed', value: 54, count: 45 },
-    { day: 'Thu', value: 71, count: 59 },
-    { day: 'Fri', value: 84, count: 70 },
-    { day: 'Sat', value: 100, count: 83 },
-    { day: 'Sun', value: 68, count: 56 },
-  ];
+  readonly chart = computed(() => {
+    const weekly = this.stats()?.weekly ?? [];
+    if (weekly.length) {
+      return weekly.map((point, index) => ({ ...point, today: index === weekly.length - 1 }));
+    }
+    return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({
+      day,
+      count: 0,
+      value: 6,
+      today: false,
+    }));
+  });
 
-  readonly requests = signal<AdminRequest[]>([
-    {
-      id: 'MR-2493',
-      rider: 'Sneha Patil',
-      city: 'Bengaluru',
-      service: 'Battery jump-start',
-      mechanic: 'Awaiting assignment',
-      status: 'searching',
-      label: 'Searching',
-      amount: '₹320',
-      age: '2 min',
-    },
-    {
-      id: 'MR-2490',
-      rider: 'Vikram Shah',
-      city: 'Mumbai',
-      service: 'Towing & recovery',
-      mechanic: 'Awaiting assignment',
-      status: 'searching',
-      label: 'Searching',
-      amount: '₹499',
-      age: '6 min',
-    },
-    {
-      id: 'MR-2488',
-      rider: 'Meera Joshi',
-      city: 'Pune',
-      service: 'Puncture repair',
-      mechanic: 'Imran Shaikh',
-      status: 'in_progress',
-      label: 'In progress',
-      amount: '₹278',
-      age: '14 min',
-    },
-    {
-      id: 'MR-2485',
-      rider: 'Rahul Verma',
-      city: 'Hyderabad',
-      service: 'Chain adjustment',
-      mechanic: 'Deepak Rao',
-      status: 'in_progress',
-      label: 'In progress',
-      amount: '₹229',
-      age: '28 min',
-    },
-    {
-      id: 'MR-2481',
-      rider: 'Aarav Mehta',
-      city: 'Bengaluru',
-      service: 'Puncture repair',
-      mechanic: 'Ravi Kumar',
-      status: 'completed',
-      label: 'Completed',
-      amount: '₹278',
-      age: '42 min',
-    },
-    {
-      id: 'MR-2479',
-      rider: 'Nisha Kulkarni',
-      city: 'Chennai',
-      service: 'Fuel delivery',
-      mechanic: '—',
-      status: 'cancelled',
-      label: 'Cancelled',
-      amount: '₹0',
-      age: '1 h',
-    },
-    {
-      id: 'MR-2476',
-      rider: 'Aditya Rao',
-      city: 'Delhi NCR',
-      service: 'Battery jump-start',
-      mechanic: 'Meena Iyer',
-      status: 'completed',
-      label: 'Completed',
-      amount: '₹249',
-      age: '1 h',
-    },
-  ]);
+  readonly weekTotal = computed(() =>
+    (this.stats()?.weekly ?? []).reduce((total, point) => total + point.count, 0),
+  );
 
-  readonly mechanics = signal<AdminMechanic[]>([
-    {
-      id: 'mech-1',
-      name: 'Ravi Kumar',
-      initials: 'RK',
-      city: 'Bengaluru',
-      zone: 'Whitefield',
-      jobs: 1284,
-      rating: 4.9,
-      status: 'Verified',
-      joined: 'Jan 2026',
-      tone: 'green',
-    },
-    {
-      id: 'mech-2',
-      name: 'Imran Shaikh',
-      initials: 'IS',
-      city: 'Pune',
-      zone: 'Koregaon Park',
-      jobs: 942,
-      rating: 4.8,
-      status: 'Verified',
-      joined: 'Feb 2026',
-      tone: 'blue',
-    },
-    {
-      id: 'mech-3',
-      name: 'Deepak Rao',
-      initials: 'DR',
-      city: 'Hyderabad',
-      zone: 'Gachibowli',
-      jobs: 611,
-      rating: 4.7,
-      status: 'Pending',
-      joined: 'Jun 2026',
-      tone: 'brand',
-    },
-    {
-      id: 'mech-4',
-      name: 'Arjun Das',
-      initials: 'AD',
-      city: 'Bengaluru',
-      zone: 'Koramangala',
-      jobs: 0,
-      rating: 0,
-      status: 'Review',
-      joined: 'Nov 2026',
-      tone: 'brand',
-    },
-    {
-      id: 'mech-5',
-      name: 'Meena Iyer',
-      initials: 'MI',
-      city: 'Chennai',
-      zone: 'Adyar',
-      jobs: 388,
-      rating: 4.9,
-      status: 'Verified',
-      joined: 'Mar 2026',
-      tone: 'green',
-    },
-    {
-      id: 'mech-6',
-      name: 'Farhan Ali',
-      initials: 'FA',
-      city: 'Hyderabad',
-      zone: 'Banjara Hills',
-      jobs: 204,
-      rating: 4.5,
-      status: 'Pending',
-      joined: 'Sep 2026',
-      tone: 'blue',
-    },
-  ]);
+  readonly mechanics = computed<AdminMechanic[]>(() =>
+    this.users()
+      .filter((user) => user.role === 'MECHANIC')
+      .map((user) => ({
+        id: user.id,
+        name: user.fullName,
+        initials: this.initials(user.fullName),
+        city: user.city ?? '—',
+        zone: user.workshop ?? user.specialty ?? 'Unassigned',
+        jobs: user.totalJobs,
+        rating: user.rating,
+        online: user.online,
+        status: user.verified ? 'Verified' : 'Pending',
+        joined: this.formatMonth(user.createdAt),
+      })),
+  );
 
-  readonly activity = [
-    {
-      icon: 'check' as IconName,
-      text: 'Ravi Kumar accepted request #MR-2493',
-      time: '2 min ago',
-      tone: 'green',
-    },
-    {
-      icon: 'wallet' as IconName,
-      text: 'Payout batch PO-8841 initiated — ₹3,420',
-      time: '18 min ago',
-      tone: 'blue',
-    },
-    {
-      icon: 'user' as IconName,
-      text: 'New mechanic application from Arjun Das',
-      time: '34 min ago',
-      tone: 'brand',
-    },
-    {
-      icon: 'check' as IconName,
-      text: 'Request #MR-2477 completed in 22 min',
-      time: '1 h ago',
-      tone: 'green',
-    },
-    {
-      icon: 'alert' as IconName,
-      text: 'Heavy rain alert active in Mumbai zone',
-      time: '1 h ago',
-      tone: 'amber',
-    },
-  ];
+  readonly ridersCount = computed(
+    () => this.users().filter((user) => user.role === 'CUSTOMER').length,
+  );
 
-  readonly settings = signal<SettingItem[]>([
-    {
-      key: 'autoDispatch',
-      title: 'Automatic dispatch',
-      description: 'Offer new requests to the three closest available mechanics.',
-      enabled: true,
-      icon: 'navigation',
-    },
-    {
-      key: 'escalation',
-      title: 'SLA escalation',
-      description: 'Alert the rescue desk when a request is unassigned for 3 minutes.',
-      enabled: true,
-      icon: 'alert',
-    },
-    {
-      key: 'emailDigest',
-      title: 'Daily email digest',
-      description: 'Send operations metrics and incident notes to admins at 8pm.',
-      enabled: false,
-      icon: 'mail',
-    },
-    {
-      key: 'maintenance',
-      title: 'Maintenance mode',
-      description: 'Pause new requests while keeping live rescues running.',
-      enabled: false,
-      icon: 'lock',
-    },
-  ]);
+  readonly onlineMechanics = computed(
+    () => this.mechanics().filter((mechanic) => mechanic.online).length,
+  );
+
+  readonly networkRating = computed(() => {
+    const rated = this.mechanics().filter((mechanic) => mechanic.rating > 0);
+    if (!rated.length) return '—';
+    const average = rated.reduce((total, mechanic) => total + mechanic.rating, 0) / rated.length;
+    return average.toFixed(1);
+  });
+
+  readonly activity = computed<ActivityItem[]>(() => {
+    const items: ActivityItem[] = [];
+    const recent = this.requests().slice(0, 5);
+
+    for (const request of recent) {
+      if (request.status === 'searching') {
+        items.push({
+          icon: 'alert',
+          text: `${request.rider} requested ${request.service.toLowerCase()}`,
+          time: request.age,
+          tone: 'amber',
+        });
+      } else if (request.status === 'in_progress') {
+        items.push({
+          icon: 'navigation',
+          text: `${request.mechanic} is handling ${request.reference} for ${request.rider}`,
+          time: request.age,
+          tone: 'blue',
+        });
+      } else if (request.status === 'completed') {
+        items.push({
+          icon: 'check',
+          text: `${request.reference} completed for ${request.rider} · ${request.amount}`,
+          time: request.age,
+          tone: 'green',
+        });
+      } else {
+        items.push({
+          icon: 'close',
+          text: `${request.reference} cancelled by ${request.rider}`,
+          time: request.age,
+          tone: 'brand',
+        });
+      }
+    }
+
+    return items;
+  });
+
+  readonly settings = signal<SettingItem[]>(this.loadSettings());
 
   readonly filters: { key: RequestFilter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -369,7 +270,7 @@ export class AdminDashboard {
       const matchesFilter = filter === 'all' || request.status === filter;
       const matchesQuery =
         !query ||
-        [request.id, request.rider, request.city, request.service, request.mechanic].some(
+        [request.reference, request.rider, request.city, request.service, request.mechanic].some(
           (value) => value.toLowerCase().includes(query),
         );
       return matchesFilter && matchesQuery;
@@ -382,6 +283,14 @@ export class AdminDashboard {
       .slice(0, 5),
   );
 
+  constructor() {
+    this.loadAll();
+
+    interval(4000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadAll());
+  }
+
   setTab(tab: string): void {
     this.activeTab.set(tab as AdminTab);
   }
@@ -391,45 +300,56 @@ export class AdminDashboard {
   }
 
   assign(request: AdminRequest): void {
-    this.requests.update((requests) =>
-      requests.map((item) =>
-        item.id === request.id
-          ? {
-              ...item,
-              status: 'in_progress' as RequestStatus,
-              label: 'In progress',
-              mechanic: 'Nearest available partner',
-            }
-          : item,
-      ),
-    );
-    this.toasts.show(`Request ${request.id} assigned to the nearest partner.`, 'success');
+    this.api.assignRequest(request.id).subscribe({
+      next: (updated) => {
+        this.toasts.show(
+          `${request.reference} assigned to ${updated.mechanicName ?? 'the nearest partner'}.`,
+          'success',
+        );
+        this.loadAll();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not assign this request.'), 'error');
+        this.loadAll();
+      },
+    });
   }
 
   complete(request: AdminRequest): void {
-    this.requests.update((requests) =>
-      requests.map((item) =>
-        item.id === request.id
-          ? { ...item, status: 'completed' as RequestStatus, label: 'Completed' }
-          : item,
-      ),
-    );
-    this.toasts.show(`Request ${request.id} marked as completed.`, 'success');
+    if (!request.mechanicId) {
+      this.toasts.show('Assign a mechanic before completing this request.', 'error');
+      return;
+    }
+
+    this.api.completeRequest(request.id, request.mechanicId).subscribe({
+      next: () => {
+        this.toasts.show(`${request.reference} marked as completed.`, 'success');
+        this.loadAll();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not complete this request.'), 'error');
+        this.loadAll();
+      },
+    });
   }
 
   approve(mechanic: AdminMechanic): void {
-    this.mechanics.update((mechanics) =>
-      mechanics.map((item) =>
-        item.id === mechanic.id ? { ...item, status: 'Verified' as const } : item,
-      ),
-    );
-    this.toasts.show(`${mechanic.name} is now a verified partner.`, 'success');
+    this.api.setVerified(mechanic.id, true).subscribe({
+      next: () => {
+        this.toasts.show(`${mechanic.name} is now a verified partner.`, 'success');
+        this.loadAll();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not verify this partner.'), 'error');
+      },
+    });
   }
 
   toggleSetting(key: string): void {
     this.settings.update((items) =>
       items.map((item) => (item.key === key ? { ...item, enabled: !item.enabled } : item)),
     );
+    this.persistSettings();
 
     const setting = this.settings().find((item) => item.key === key);
     if (setting) {
@@ -441,9 +361,18 @@ export class AdminDashboard {
   }
 
   exportRequests(): void {
-    const header = ['Reference', 'Rider', 'City', 'Service', 'Mechanic', 'Status', 'Amount', 'Age'];
+    const header = [
+      'Reference',
+      'Rider',
+      'City',
+      'Service',
+      'Mechanic',
+      'Status',
+      'Amount',
+      'Age',
+    ];
     const rows = this.requests().map((request) => [
-      request.id,
+      request.reference,
       request.rider,
       request.city,
       request.service,
@@ -469,6 +398,151 @@ export class AdminDashboard {
   }
 
   saveSettings(): void {
-    this.toasts.show('Platform settings saved.', 'success');
+    this.persistSettings();
+    this.toasts.show('Operations preferences saved on this device.', 'success');
+  }
+
+  private loadAll(): void {
+    this.api.stats().subscribe({
+      next: (stats) => this.stats.set(stats),
+      error: () => this.stats.set(null),
+    });
+
+    this.api.allRequests().subscribe({
+      next: (requests) => {
+        this.requests.set(requests.map((request) => this.toAdminRequest(request)));
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+
+    this.api.users().subscribe({
+      next: (users) => this.users.set(users),
+      error: () => this.users.set([]),
+    });
+  }
+
+  private toAdminRequest(request: ApiRescueRequest): AdminRequest {
+    const status: RequestStatus =
+      request.status === 'SEARCHING'
+        ? 'searching'
+        : request.status === 'COMPLETED'
+          ? 'completed'
+          : request.status === 'CANCELLED'
+            ? 'cancelled'
+            : 'in_progress';
+
+    const label =
+      status === 'searching'
+        ? 'Searching'
+        : status === 'in_progress'
+          ? request.status === 'ARRIVED'
+            ? 'Arrived'
+            : 'In progress'
+          : status === 'completed'
+            ? 'Completed'
+            : 'Cancelled';
+
+    return {
+      id: request.id,
+      reference: request.reference,
+      rider: request.riderName ?? 'Rider',
+      city: request.location ?? '—',
+      service: request.serviceLabel ?? 'Roadside assistance',
+      mechanic: request.mechanicName ?? 'Awaiting assignment',
+      mechanicId: request.mechanicId,
+      status,
+      label,
+      amount: request.quote ?? '—',
+      age: this.age(request.createdAt),
+    };
+  }
+
+  private initials(name: string): string {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
+  }
+
+  private formatMonth(value?: string): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(date);
+  }
+
+  private age(value?: string): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+
+    const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h`;
+    return `${Math.floor(hours / 24)} d`;
+  }
+
+  private errorMessage(error: unknown, fallback: string): string {
+    const message = (error as { error?: { message?: string } })?.error?.message;
+    return typeof message === 'string' && message ? message : fallback;
+  }
+
+  private loadSettings(): SettingItem[] {
+    const defaults: SettingItem[] = [
+      {
+        key: 'autoDispatch',
+        title: 'Automatic dispatch',
+        description: 'Offer new requests to the three closest available mechanics.',
+        enabled: true,
+        icon: 'navigation',
+      },
+      {
+        key: 'escalation',
+        title: 'SLA escalation',
+        description: 'Alert the rescue desk when a request is unassigned for 3 minutes.',
+        enabled: true,
+        icon: 'alert',
+      },
+      {
+        key: 'emailDigest',
+        title: 'Daily email digest',
+        description: 'Send operations metrics and incident notes to admins at 8pm.',
+        enabled: false,
+        icon: 'mail',
+      },
+      {
+        key: 'maintenance',
+        title: 'Maintenance mode',
+        description: 'Pause new requests while keeping live rescues running.',
+        enabled: false,
+        icon: 'lock',
+      },
+    ];
+
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return defaults;
+
+      const saved = JSON.parse(raw) as Record<string, boolean>;
+      return defaults.map((item) => ({
+        ...item,
+        enabled: typeof saved[item.key] === 'boolean' ? saved[item.key] : item.enabled,
+      }));
+    } catch {
+      return defaults;
+    }
+  }
+
+  private persistSettings(): void {
+    const values: Record<string, boolean> = {};
+    for (const item of this.settings()) {
+      values[item.key] = item.enabled;
+    }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(values));
   }
 }

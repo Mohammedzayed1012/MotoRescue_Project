@@ -36,56 +36,66 @@
                       <span class="dot"></span>
                       {{ requestStatus().label }}
                     </span>
-                    <h2>{{ active.service }}</h2>
-                    <p>{{ active.bike }} · {{ active.location }}</p>
+                    <h2>{{ active.serviceLabel }}</h2>
+                    <p>{{ active.bikeLabel }} · {{ active.location }}</p>
                   </div>
                 </div>
 
                 <div class="rescue-card__eta">
-                  <strong>{{ active.eta }}</strong>
+                  <strong>{{ active.etaMinutes ? active.etaMinutes + ' min' : '—' }}</strong>
                   <span>ETA</span>
                 </div>
               </div>
 
-              @if (active.status === 'searching') {
+              @if (active.status === 'SEARCHING') {
                 <div class="searching">
                   <span class="spinner spinner--dark"></span>
                   <div>
                     <strong>Finding the closest verified mechanic…</strong>
-                    <p>We usually match a partner in under two minutes.</p>
+                    <p>Your request is live. A partner can accept it any second.</p>
                   </div>
                 </div>
-              } @else if (active.mechanic) {
+              } @else if (active.mechanicName) {
                 <div class="mechanic-row">
-                  <span
-                    class="avatar avatar--lg"
-                    [class.avatar--brand]="active.mechanic.tone === 'brand'"
-                    [class.avatar--green]="active.mechanic.tone === 'green'"
-                    [class.avatar--blue]="active.mechanic.tone === 'blue'"
-                  >
-                    {{ active.mechanic.initials }}
+                  <span class="avatar avatar--lg avatar--green">
+                    {{ initialsFor(active.mechanicName) }}
                   </span>
                   <div class="mechanic-row__info">
-                    <strong>{{ active.mechanic.name }}</strong>
-                    <span>
-                      ★ {{ active.mechanic.rating }} · {{ active.mechanic.jobs }} rescues ·
-                      {{ active.mechanic.distance }} away
-                    </span>
+                    <strong>{{ active.mechanicName }}</strong>
+                    <span>{{ active.distance }} away · Verified rescue partner</span>
                     <span class="verified-tag">
                       <app-icon name="shield" [size]="12" />
                       Verified partner
                     </span>
                   </div>
                   <div class="mechanic-row__actions">
-                    <a class="icon-btn icon-btn--brand" href="tel:+918000000000" aria-label="Call your mechanic">
+                    <a
+                      class="icon-btn icon-btn--brand"
+                      [href]="'tel:' + (active.mechanicPhone || '+918000000000')"
+                      aria-label="Call your mechanic"
+                    >
                       <app-icon name="phone" [size]="18" />
                     </a>
-                    <a class="icon-btn" href="sms:+918000000000" aria-label="Message your mechanic">
+                    <a
+                      class="icon-btn"
+                      [href]="'sms:' + (active.mechanicPhone || '+918000000000')"
+                      aria-label="Message your mechanic"
+                    >
                       <app-icon name="message" [size]="18" />
                     </a>
                   </div>
                 </div>
               }
+
+              <div class="tracking-wrap">
+                <app-tracking-map
+                  [status]="active.status"
+                  [mechanicName]="active.mechanicName ?? ''"
+                  [location]="active.location ?? ''"
+                  [eta]="(active.etaMinutes || 4) + ' min'"
+                  [phone]="active.mechanicPhone ?? ''"
+                />
+              </div>
 
               <div class="timeline">
                 @for (step of timeline; track step.label; let i = $index) {
@@ -112,16 +122,20 @@
               <div class="rescue-card__foot">
                 <div>
                   <span class="rescue-card__price-label">Approved quote</span>
-                  <strong class="rescue-card__price">{{ active.price }}</strong>
+                  <strong class="rescue-card__price">{{ active.quote ?? '—' }}</strong>
                 </div>
                 <div class="rescue-card__actions">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="cancelRequest()">
-                    Cancel request
-                  </button>
-                  <a class="btn btn-primary btn-sm" href="tel:+918000000000">
-                    <app-icon name="phone" [size]="15" />
-                    Call mechanic
-                  </a>
+                  @if (active.status === 'SEARCHING') {
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="cancelRequest()">
+                      Cancel request
+                    </button>
+                  }
+                  @if (active.mechanicPhone) {
+                    <a class="btn btn-primary btn-sm" [href]="'tel:' + active.mechanicPhone">
+                      <app-icon name="phone" [size]="15" />
+                      Call mechanic
+                    </a>
+                  }
                 </div>
               </div>
             </section>
@@ -204,7 +218,13 @@
                         <td>{{ entry.mechanic }}</td>
                         <td>{{ entry.amount }}</td>
                         <td>
-                          <span class="badge badge--green">{{ entry.status }}</span>
+                          <span
+                            class="badge"
+                            [class.badge--green]="entry.status === 'Completed'"
+                            [class.badge--neutral]="entry.status === 'Cancelled'"
+                          >
+                            {{ entry.status }}
+                          </span>
                         </td>
                       </tr>
                     }
@@ -225,10 +245,16 @@
           <section class="card map-card">
             <div class="card-head">
               <h3>Live coverage</h3>
-              <span class="badge badge--green"><span class="dot"></span>142 online</span>
+              <span class="badge badge--green"><span class="dot"></span>{{ onlineMechanics() }} online</span>
             </div>
             <div class="map-card__map">
-              <app-map-preview badge="Your area" [eta]="''" />
+              <app-tracking-map
+                [status]="request()?.status ?? null"
+                [mechanicName]="request()?.mechanicName ?? ''"
+                [location]="request()?.location ?? ''"
+                [eta]="((request()?.etaMinutes ?? 4)) + ' min'"
+                [phone]="request()?.mechanicPhone ?? ''"
+              />
             </div>
             <div class="map-card__foot">
               <span class="map-card__pin"><app-icon name="pin" [size]="15" /></span>
@@ -244,25 +270,28 @@
               <h3>Mechanics near you</h3>
               <span class="badge badge--neutral">Live</span>
             </div>
-            <ul class="mechanics">
-              @for (mechanic of mechanics; track mechanic.id) {
-                <li>
-                  <span
-                    class="avatar avatar--sm"
-                    [class.avatar--brand]="mechanic.tone === 'brand'"
-                    [class.avatar--green]="mechanic.tone === 'green'"
-                    [class.avatar--blue]="mechanic.tone === 'blue'"
-                  >
-                    {{ mechanic.initials }}
-                  </span>
-                  <div class="mechanics__copy">
-                    <strong>{{ mechanic.name }}</strong>
-                    <span>★ {{ mechanic.rating }} · {{ mechanic.specialty }}</span>
-                  </div>
-                  <span class="mechanics__distance">{{ mechanic.distance }}</span>
-                </li>
-              }
-            </ul>
+            @if (mechanicsNear().length) {
+              <ul class="mechanics">
+                @for (mechanic of mechanicsNear(); track mechanic.id) {
+                  <li>
+                    <span class="avatar avatar--sm" [class.avatar--green]="mechanic.online" [class.avatar--brand]="!mechanic.online">
+                      {{ initialsFor(mechanic.fullName) }}
+                    </span>
+                    <div class="mechanics__copy">
+                      <strong>{{ mechanic.fullName }}</strong>
+                      <span>{{ mechanic.workshop || mechanic.city || mechanic.specialty || 'Rescue partner' }}</span>
+                    </div>
+                    <span class="mechanics__distance">{{ mechanic.online ? 'Online' : 'Away' }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <div class="empty-state">
+                <app-icon name="users" [size]="24" />
+                <h3>No partners yet</h3>
+                <p>Create a mechanic account and it will appear here.</p>
+              </div>
+            }
           </section>
 
           <section class="plan-card">
@@ -304,23 +333,46 @@
                 <label class="label" for="bike">Which bike?</label>
                 <select id="bike" class="select" formControlName="bike">
                   @for (bike of bikes(); track bike.id) {
-                    <option [value]="bike.name + ' · ' + bike.regNo">
-                      {{ bike.name }} · {{ bike.regNo }}
-                    </option>
+                    <option [value]="bike.id">{{ bike.name }} · {{ bike.regNo }}</option>
                   }
-                  <option value="Other bike">Other bike</option>
+                  <option value="other">Other bike</option>
                 </select>
               </div>
 
               <div class="field">
-                <label class="label" for="location">Where are you?</label>
+                <div class="label-row">
+                  <label class="label" for="location">Where are you?</label>
+                  <button
+                    type="button"
+                    class="locate-btn"
+                    (click)="useLiveLocation()"
+                    [disabled]="locating()"
+                  >
+                    @if (locating()) {
+                      <span class="spinner spinner--sm"></span>
+                      Locating…
+                    } @else {
+                      <app-icon name="navigation" [size]="13" />
+                      Use live location
+                    }
+                  </button>
+                </div>
                 <input
                   id="location"
                   class="input"
                   type="text"
                   formControlName="location"
                   placeholder="Area, landmark, or map pin"
+                  [class.is-invalid]="!!locationError()"
                 />
+                @if (locationError()) {
+                  <span class="error-text">{{ locationError() }}</span>
+                } @else if (liveLocation()) {
+                  <span class="hint hint--live">
+                    <app-icon name="pin" [size]="13" />
+                    Live GPS pin captured — your mechanic navigates straight here.
+                  </span>
+                }
               </div>
             </div>
 
@@ -423,15 +475,43 @@
           <form class="add-bike__form" [formGroup]="addBikeForm" (ngSubmit)="addBike()" novalidate>
             <div class="field">
               <label class="label" for="bikeName">Bike model</label>
-              <input id="bikeName" class="input" formControlName="name" placeholder="e.g. Royal Enfield Hunter 350" />
+              <input
+                id="bikeName"
+                class="input"
+                formControlName="name"
+                placeholder="e.g. Royal Enfield Hunter 350"
+                [class.is-invalid]="!!bikeNameError()"
+              />
+              @if (bikeNameError()) {
+                <span class="error-text">{{ bikeNameError() }}</span>
+              }
             </div>
             <div class="field">
               <label class="label" for="bikeReg">Registration</label>
-              <input id="bikeReg" class="input" formControlName="regNo" placeholder="KA 05 AB 1234" />
+              <input
+                id="bikeReg"
+                class="input"
+                formControlName="regNo"
+                placeholder="KA 05 AB 1234"
+                [class.is-invalid]="!!bikeRegError()"
+              />
+              @if (bikeRegError()) {
+                <span class="error-text">{{ bikeRegError() }}</span>
+              }
             </div>
             <div class="field">
               <label class="label" for="bikeYear">Year</label>
-              <input id="bikeYear" class="input" formControlName="year" placeholder="2023" inputmode="numeric" />
+              <input
+                id="bikeYear"
+                class="input"
+                formControlName="year"
+                placeholder="2023"
+                inputmode="numeric"
+                [class.is-invalid]="!!bikeYearError()"
+              />
+              @if (bikeYearError()) {
+                <span class="error-text">{{ bikeYearError() }}</span>
+              }
             </div>
             <button type="submit" class="btn btn-dark">Save bike</button>
           </form>
@@ -444,9 +524,9 @@
             <div class="bike-card__head">
               <span
                 class="bike-card__icon"
-                [class.bike-card__icon--brand]="bike.tone === 'brand'"
-                [class.bike-card__icon--green]="bike.tone === 'green'"
-                [class.bike-card__icon--blue]="bike.tone === 'blue'"
+                [class.bike-card__icon--brand]="i === 0"
+                [class.bike-card__icon--green]="i === 1"
+                [class.bike-card__icon--blue]="i > 1"
               >
                 <app-icon name="bike" [size]="24" />
               </span>
@@ -528,7 +608,15 @@
                     <td>{{ entry.mechanic }}</td>
                     <td>{{ entry.bike }}</td>
                     <td>{{ entry.amount }}</td>
-                    <td><span class="badge badge--green">{{ entry.status }}</span></td>
+                    <td>
+                      <span
+                        class="badge"
+                        [class.badge--green]="entry.status === 'Completed'"
+                        [class.badge--neutral]="entry.status === 'Cancelled'"
+                      >
+                        {{ entry.status }}
+                      </span>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -560,13 +648,22 @@
               <span class="avatar avatar--lg">{{ auth.user()?.fullName?.charAt(0) }}</span>
               <div>
                 <strong>{{ auth.user()?.fullName }}</strong>
-                <span>Rider account · {{ isDemo() ? 'Demo workspace' : 'Verified email' }}</span>
+                <span>Rider account · Verified email</span>
               </div>
             </div>
 
             <div class="field">
               <label class="label" for="profileName">Full name</label>
-              <input id="profileName" class="input" formControlName="fullName" autocomplete="name" />
+              <input
+                id="profileName"
+                class="input"
+                formControlName="fullName"
+                autocomplete="name"
+                [class.is-invalid]="!!profileNameError()"
+              />
+              @if (profileNameError()) {
+                <span class="error-text">{{ profileNameError() }}</span>
+              }
             </div>
 
             <div class="field">
@@ -577,7 +674,17 @@
 
             <div class="field">
               <label class="label" for="profilePhone">Mobile number</label>
-              <input id="profilePhone" class="input" formControlName="phone" type="tel" autocomplete="tel" />
+              <input
+                id="profilePhone"
+                class="input"
+                formControlName="phone"
+                type="tel"
+                autocomplete="tel"
+                [class.is-invalid]="!!profilePhoneError()"
+              />
+              @if (profilePhoneError()) {
+                <span class="error-text">{{ profilePhoneError() }}</span>
+              }
             </div>
 
             <div class="pref-list">

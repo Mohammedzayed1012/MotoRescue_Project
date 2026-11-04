@@ -37,6 +37,30 @@ public class User {
     @Column(length = 20)
     private String role;
 
+    @Column(length = 100)
+    private String workshop;
+
+    @Column(length = 80)
+    private String city;
+
+    @Column(length = 80)
+    private String specialty;
+
+    @Column(name = "service_radius_km")
+    private Integer serviceRadiusKm;
+
+    @Column(name = "is_online")
+    private Boolean online;
+
+    @Column(name = "is_verified")
+    private Boolean verified;
+
+    @Column(name = "rating")
+    private Double rating;
+
+    @Column(name = "total_jobs")
+    private Integer totalJobs;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -99,6 +123,70 @@ public class User {
         this.role = role;
     }
 
+    public String getWorkshop() {
+        return workshop;
+    }
+
+    public void setWorkshop(String workshop) {
+        this.workshop = workshop;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getSpecialty() {
+        return specialty;
+    }
+
+    public void setSpecialty(String specialty) {
+        this.specialty = specialty;
+    }
+
+    public Integer getServiceRadiusKm() {
+        return serviceRadiusKm == null ? 12 : serviceRadiusKm;
+    }
+
+    public void setServiceRadiusKm(Integer serviceRadiusKm) {
+        this.serviceRadiusKm = serviceRadiusKm;
+    }
+
+    public boolean isOnline() {
+        return Boolean.TRUE.equals(online);
+    }
+
+    public void setOnline(Boolean online) {
+        this.online = online;
+    }
+
+    public boolean isVerified() {
+        return Boolean.TRUE.equals(verified);
+    }
+
+    public void setVerified(Boolean verified) {
+        this.verified = verified;
+    }
+
+    public double getRating() {
+        return rating == null ? 0d : rating;
+    }
+
+    public void setRating(Double rating) {
+        this.rating = rating;
+    }
+
+    public int getTotalJobs() {
+        return totalJobs == null ? 0 : totalJobs;
+    }
+
+    public void setTotalJobs(Integer totalJobs) {
+        this.totalJobs = totalJobs;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -109,6 +197,18 @@ public class User {
 
         if (role == null || role.isBlank()) {
             role = ROLE_CUSTOMER;
+        }
+        if (online == null) {
+            online = false;
+        }
+        if (verified == null) {
+            verified = false;
+        }
+        if (rating == null) {
+            rating = 0d;
+        }
+        if (totalJobs == null) {
+            totalJobs = 0;
         }
     }
 }

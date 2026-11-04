@@ -4,7 +4,6 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { ToastService } from '../../core/toast.service';
-import { UserRole } from '../../core/models';
 import { AuthShell } from '../../shared/auth-shell/auth-shell';
 import { Icon } from '../../shared/icon/icon';
 
@@ -32,12 +31,6 @@ export class Login {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
-
-  readonly demos: { role: UserRole; label: string; icon: 'bike' | 'wrench' | 'grid' }[] = [
-    { role: 'CUSTOMER', label: 'Rider', icon: 'bike' },
-    { role: 'MECHANIC', label: 'Mechanic', icon: 'wrench' },
-    { role: 'ADMIN', label: 'Admin', icon: 'grid' },
-  ];
 
   submit(): void {
     this.formSubmitted.set(true);
@@ -69,15 +62,9 @@ export class Login {
     });
   }
 
-  openDemo(role: UserRole): void {
-    this.auth.startDemo(role);
-    this.toasts.show(`Demo workspace opened as ${this.labelFor(role)}.`, 'info');
-    this.router.navigate([this.auth.dashboardPath(role)]);
-  }
-
   showPasswordReset(): void {
     this.notice.set(
-      'Password resets are not live yet. For now, call the rescue desk on +91 80000 00000 and we will help you back in.',
+      'Password resets are handled by the rescue desk. Call +91 80000 00000 and we will help you back in.',
     );
   }
 
@@ -101,13 +88,9 @@ export class Login {
     return control.invalid && (control.touched || this.formSubmitted());
   }
 
-  private labelFor(role: UserRole): string {
-    return role === 'CUSTOMER' ? 'rider' : role === 'MECHANIC' ? 'mechanic' : 'admin';
-  }
-
   private friendlyError(error: HttpErrorResponse): string {
     if (error.status === 0) {
-      return 'We could not reach the MotoRescue service. Check your connection, or open a demo workspace below.';
+      return 'We could not reach the MotoRescue service. Check that the backend is running and try again.';
     }
 
     if (error.status === 401) {

@@ -1,5 +1,5 @@
 <app-dashboard-shell
-  [nav]="navItems"
+  [nav]="navItems()"
   [active]="activeTab()"
   [title]="pageTitle()"
   [subtitle]="pageSubtitle()"
@@ -15,7 +15,7 @@
     <!-- Overview ----------------------------------------------------------->
     @case ('overview') {
       <div class="kpi-row">
-        @for (kpi of kpis; track kpi.label) {
+        @for (kpi of kpis(); track kpi.label) {
           <article class="kpi">
             <span
               class="kpi__icon"
@@ -40,20 +40,19 @@
             <div class="card-head">
               <div>
                 <h3>Rescue volume</h3>
-                <p class="card-head__sub">Requests per day across all live zones</p>
+                <p class="card-head__sub">Requests per day over the last seven days</p>
               </div>
               <div class="volume-card__badge">
-                <span class="badge badge--green">+12%</span>
-                <span class="volume-card__total">403 this week</span>
+                <span class="badge badge--green">{{ weekTotal() }} this week</span>
               </div>
             </div>
 
             <div class="chart">
-              @for (bar of chart; track bar.day; let last = $last) {
+              @for (bar of chart(); track bar.day) {
                 <div class="chart__col">
                   <span class="chart__count">{{ bar.count }}</span>
                   <div class="chart__track">
-                    <span class="chart__bar" [class.chart__bar--today]="last" [style.height.%]="bar.value"></span>
+                    <span class="chart__bar" [class.chart__bar--today]="bar.today" [style.height.%]="bar.value"></span>
                   </div>
                   <span class="chart__day">{{ bar.day }}</span>
                 </div>
@@ -61,9 +60,9 @@
             </div>
 
             <div class="card-head volume-card__foot">
-              <span><span class="dot dot--green"></span> 142 mechanics online</span>
-              <span><span class="dot dot--amber"></span> 6 requests awaiting assignment</span>
-              <span><span class="dot dot--red"></span> 1 zone under weather alert</span>
+              <span><span class="dot dot--green"></span> {{ onlineMechanics() }} mechanics online</span>
+              <span><span class="dot dot--amber"></span> {{ stats()?.searching ?? 0 }} awaiting assignment</span>
+              <span><span class="dot dot--red"></span> {{ stats()?.inProgress ?? 0 }} in progress</span>
             </div>
           </section>
 
@@ -79,52 +78,60 @@
               </button>
             </div>
 
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Reference</th>
-                    <th>Rider</th>
-                    <th>City</th>
-                    <th>Service</th>
-                    <th>Mechanic</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (request of liveRequests(); track request.id) {
+            @if (liveRequests().length) {
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
                     <tr>
-                      <td><strong>{{ request.id }}</strong></td>
-                      <td>{{ request.rider }}</td>
-                      <td>{{ request.city }}</td>
-                      <td>{{ request.service }}</td>
-                      <td>{{ request.mechanic }}</td>
-                      <td>
-                        <span
-                          class="badge"
-                          [class.badge--amber]="request.status === 'searching'"
-                          [class.badge--blue]="request.status === 'in_progress'"
-                        >
-                          {{ request.label }}
-                        </span>
-                      </td>
-                      <td class="table__action">
-                        @if (request.status === 'searching') {
-                          <button type="button" class="btn btn-soft btn-sm" (click)="assign(request)">
-                            Assign
-                          </button>
-                        } @else {
-                          <button type="button" class="btn btn-ghost btn-sm" (click)="complete(request)">
-                            Mark done
-                          </button>
-                        }
-                      </td>
+                      <th>Reference</th>
+                      <th>Rider</th>
+                      <th>Location</th>
+                      <th>Service</th>
+                      <th>Mechanic</th>
+                      <th>Status</th>
+                      <th></th>
                     </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    @for (request of liveRequests(); track request.id) {
+                      <tr>
+                        <td><strong>{{ request.reference }}</strong></td>
+                        <td>{{ request.rider }}</td>
+                        <td>{{ request.city }}</td>
+                        <td>{{ request.service }}</td>
+                        <td>{{ request.mechanic }}</td>
+                        <td>
+                          <span
+                            class="badge"
+                            [class.badge--amber]="request.status === 'searching'"
+                            [class.badge--blue]="request.status === 'in_progress'"
+                          >
+                            {{ request.label }}
+                          </span>
+                        </td>
+                        <td class="table__action">
+                          @if (request.status === 'searching') {
+                            <button type="button" class="btn btn-soft btn-sm" (click)="assign(request)">
+                              Assign
+                            </button>
+                          } @else {
+                            <button type="button" class="btn btn-ghost btn-sm" (click)="complete(request)">
+                              Mark done
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <app-icon name="check" [size]="24" />
+                <h3>No live requests</h3>
+                <p>New rider requests will appear here the moment they are created.</p>
+              </div>
+            }
           </section>
         </div>
 
@@ -134,24 +141,32 @@
               <h3>Activity</h3>
               <span class="badge badge--neutral">Live</span>
             </div>
-            <ul class="feed">
-              @for (item of activity; track item.text) {
-                <li>
-                  <span
-                    class="feed__icon"
-                    [class.feed__icon--green]="item.tone === 'green'"
-                    [class.feed__icon--blue]="item.tone === 'blue'"
-                    [class.feed__icon--amber]="item.tone === 'amber'"
-                  >
-                    <app-icon [name]="item.icon" [size]="15" />
-                  </span>
-                  <div>
-                    <p>{{ item.text }}</p>
-                    <span>{{ item.time }}</span>
-                  </div>
-                </li>
-              }
-            </ul>
+            @if (activity().length) {
+              <ul class="feed">
+                @for (item of activity(); track item.text) {
+                  <li>
+                    <span
+                      class="feed__icon"
+                      [class.feed__icon--green]="item.tone === 'green'"
+                      [class.feed__icon--blue]="item.tone === 'blue'"
+                      [class.feed__icon--amber]="item.tone === 'amber'"
+                    >
+                      <app-icon [name]="item.icon" [size]="15" />
+                    </span>
+                    <div>
+                      <p>{{ item.text }}</p>
+                      <span>{{ item.time }}</span>
+                    </div>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <div class="empty-state">
+                <app-icon name="activity" [size]="24" />
+                <h3>Nothing yet</h3>
+                <p>Request activity will stream in here.</p>
+              </div>
+            }
           </section>
 
           <section class="card">
@@ -162,32 +177,31 @@
 
             @for (mechanic of pendingMechanics(); track mechanic.id) {
               <div class="verify-row">
-                <span
-                  class="avatar avatar--sm"
-                  [class.avatar--brand]="mechanic.tone === 'brand'"
-                  [class.avatar--green]="mechanic.tone === 'green'"
-                  [class.avatar--blue]="mechanic.tone === 'blue'"
-                >
-                  {{ mechanic.initials }}
-                </span>
+                <span class="avatar avatar--sm avatar--brand">{{ mechanic.initials }}</span>
                 <div class="verify-row__copy">
                   <strong>{{ mechanic.name }}</strong>
-                  <span>{{ mechanic.zone }}, {{ mechanic.city }}</span>
+                  <span>{{ mechanic.zone }}{{ mechanic.city && mechanic.city !== '—' ? ', ' + mechanic.city : '' }}</span>
                 </div>
                 <button type="button" class="btn btn-soft btn-sm" (click)="approve(mechanic)">
                   Approve
                 </button>
               </div>
+            } @empty {
+              <div class="empty-state">
+                <app-icon name="shield" [size]="24" />
+                <h3>All caught up</h3>
+                <p>Every mechanic account is verified.</p>
+              </div>
             }
           </section>
 
           <section class="card card-pad health">
-            <h3>System health</h3>
+            <h3>Coverage snapshot</h3>
             <ul class="health__list">
-              <li><span>API gateway</span><strong class="is-good">99.98%</strong></li>
-              <li><span>Dispatch engine</span><strong class="is-good">42 ms</strong></li>
-              <li><span>Payments</span><strong class="is-good">Operational</strong></li>
-              <li><span>Live tracking</span><strong class="is-good">Operational</strong></li>
+              <li><span>Riders</span><strong>{{ ridersCount() }}</strong></li>
+              <li><span>Mechanics</span><strong>{{ mechanics().length }}</strong></li>
+              <li><span>Online now</span><strong class="is-good">{{ onlineMechanics() }}</strong></li>
+              <li><span>Network rating</span><strong>{{ networkRating() }}</strong></li>
             </ul>
           </section>
         </aside>
@@ -202,7 +216,7 @@
             <app-icon name="search" [size]="16" />
             <input
               type="search"
-              placeholder="Search by ID, rider, city, or mechanic"
+              placeholder="Search by ID, rider, location, or mechanic"
               aria-label="Search requests"
               (input)="requestQuery.set($any($event.target).value)"
             />
@@ -229,7 +243,7 @@
                 <tr>
                   <th>Reference</th>
                   <th>Rider</th>
-                  <th>City</th>
+                  <th>Location</th>
                   <th>Service</th>
                   <th>Mechanic</th>
                   <th>Age</th>
@@ -241,7 +255,7 @@
               <tbody>
                 @for (request of filteredRequests(); track request.id) {
                   <tr>
-                    <td><strong>{{ request.id }}</strong></td>
+                    <td><strong>{{ request.reference }}</strong></td>
                     <td>{{ request.rider }}</td>
                     <td>{{ request.city }}</td>
                     <td>{{ request.service }}</td>
@@ -288,60 +302,66 @@
     <!-- Mechanics ---------------------------------------------------------->
     @case ('mechanics') {
       <div class="network-summary">
-        <div><strong>52</strong><span>Active partners</span></div>
-        <div><strong>38</strong><span>Online right now</span></div>
-        <div><strong>4.8</strong><span>Network rating</span></div>
-        <div><strong>96%</strong><span>Acceptance rate</span></div>
+        <div><strong>{{ mechanics().length }}</strong><span>Active partners</span></div>
+        <div><strong>{{ onlineMechanics() }}</strong><span>Online right now</span></div>
+        <div><strong>{{ networkRating() }}</strong><span>Network rating</span></div>
+        <div><strong>{{ pendingMechanics().length }}</strong><span>Awaiting verification</span></div>
       </div>
 
-      <div class="mechanic-grid">
-        @for (mechanic of mechanics(); track mechanic.id) {
-          <article class="card mechanic-card">
-            <div class="mechanic-card__head">
-              <span
-                class="avatar"
-                [class.avatar--brand]="mechanic.tone === 'brand'"
-                [class.avatar--green]="mechanic.tone === 'green'"
-                [class.avatar--blue]="mechanic.tone === 'blue'"
-              >
-                {{ mechanic.initials }}
-              </span>
-
-              <span
-                class="badge"
-                [class.badge--green]="mechanic.status === 'Verified'"
-                [class.badge--amber]="mechanic.status === 'Pending'"
-                [class.badge--red]="mechanic.status === 'Review'"
-              >
-                {{ mechanic.status }}
-              </span>
-            </div>
-
-            <h3>{{ mechanic.name }}</h3>
-            <span class="mechanic-card__zone">{{ mechanic.zone }}, {{ mechanic.city }}</span>
-
-            <dl class="mechanic-card__meta">
-              <div><dt>Rescues</dt><dd>{{ mechanic.jobs }}</dd></div>
-              <div><dt>Rating</dt><dd>{{ mechanic.rating || '—' }}</dd></div>
-              <div><dt>Joined</dt><dd>{{ mechanic.joined }}</dd></div>
-            </dl>
-
-            <div class="mechanic-card__foot">
-              @if (mechanic.status !== 'Verified') {
-                <button type="button" class="btn btn-primary btn-sm btn-block" (click)="approve(mechanic)">
-                  <app-icon name="shield" [size]="14" />
-                  Verify partner
-                </button>
-              } @else {
-                <span class="verified-note">
-                  <app-icon name="check" [size]="14" />
-                  Verified partner
+      @if (mechanics().length) {
+        <div class="mechanic-grid">
+          @for (mechanic of mechanics(); track mechanic.id) {
+            <article class="card mechanic-card">
+              <div class="mechanic-card__head">
+                <span class="avatar" [class.avatar--green]="mechanic.online" [class.avatar--brand]="!mechanic.online">
+                  {{ mechanic.initials }}
                 </span>
-              }
-            </div>
-          </article>
-        }
-      </div>
+
+                <span
+                  class="badge"
+                  [class.badge--green]="mechanic.status === 'Verified'"
+                  [class.badge--amber]="mechanic.status === 'Pending'"
+                >
+                  {{ mechanic.status }}
+                </span>
+              </div>
+
+              <h3>{{ mechanic.name }}</h3>
+              <span class="mechanic-card__zone">
+                {{ mechanic.zone }}{{ mechanic.city && mechanic.city !== '—' ? ', ' + mechanic.city : '' }}
+              </span>
+
+              <dl class="mechanic-card__meta">
+                <div><dt>Rescues</dt><dd>{{ mechanic.jobs }}</dd></div>
+                <div><dt>Rating</dt><dd>{{ mechanic.rating || '—' }}</dd></div>
+                <div><dt>Joined</dt><dd>{{ mechanic.joined }}</dd></div>
+              </dl>
+
+              <div class="mechanic-card__foot">
+                @if (mechanic.status !== 'Verified') {
+                  <button type="button" class="btn btn-primary btn-sm btn-block" (click)="approve(mechanic)">
+                    <app-icon name="shield" [size]="14" />
+                    Verify partner
+                  </button>
+                } @else {
+                  <span class="verified-note">
+                    <app-icon name="check" [size]="14" />
+                    {{ mechanic.online ? 'Online · Verified partner' : 'Verified partner' }}
+                  </span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="card">
+          <div class="empty-state">
+            <app-icon name="users" [size]="24" />
+            <h3>No mechanics yet</h3>
+            <p>Create a mechanic account from the register page and it will appear here.</p>
+          </div>
+        </div>
+      }
     }
 
     <!-- Settings ----------------------------------------------------------->
@@ -352,7 +372,7 @@
             <div class="card-head">
               <div>
                 <h3>Operations</h3>
-                <p class="card-head__sub">Dispatch, escalation, and platform behaviour.</p>
+                <p class="card-head__sub">Dispatch, escalation, and console behaviour.</p>
               </div>
             </div>
 
@@ -381,32 +401,33 @@
 
             <div class="settings-actions">
               <button type="button" class="btn btn-primary" (click)="saveSettings()">Save settings</button>
-              <span>Changes apply to all live zones immediately.</span>
+              <span>Preferences are stored on this device.</span>
             </div>
           </section>
         </div>
 
         <aside class="settings-side">
           <section class="card card-pad">
-            <h3 class="side-title">Rescue desk</h3>
-            <p class="side-text">Operations coverage is staffed 24/7 across three shifts.</p>
+            <h3 class="side-title">Signed in</h3>
             <div class="desk-row">
-              <span class="avatar avatar--sm avatar--brand">PN</span>
-              <div><strong>Priya Nair</strong><span>Shift lead · until 22:00</span></div>
+              <span class="avatar avatar--sm avatar--brand">
+                {{ auth.user()?.fullName?.charAt(0) }}
+              </span>
+              <div>
+                <strong>{{ auth.user()?.fullName }}</strong>
+                <span>{{ auth.user()?.email }}</span>
+              </div>
             </div>
-            <div class="desk-row">
-              <span class="avatar avatar--sm avatar--green">VS</span>
-              <div><strong>Vikram Singh</strong><span>Escalations · until 06:00</span></div>
-            </div>
+            <p class="side-text">Operations console for the MotoRescue dispatch desk.</p>
           </section>
 
           <section class="card card-pad">
-            <h3 class="side-title">Environment</h3>
+            <h3 class="side-title">Live data</h3>
             <dl class="env">
-              <div><dt>Region</dt><dd>asia-south1</dd></div>
-              <div><dt>API version</dt><dd>v2.4.1</dd></div>
-              <div><dt>Last deploy</dt><dd>02 Nov, 21:40</dd></div>
-              <div><dt>Status</dt><dd><span class="badge badge--green">Healthy</span></dd></div>
+              <div><dt>Source</dt><dd>MySQL · motorescue</dd></div>
+              <div><dt>Requests</dt><dd>{{ requests().length }}</dd></div>
+              <div><dt>Accounts</dt><dd>{{ users().length }}</dd></div>
+              <div><dt>Refresh</dt><dd>Every 4 s</dd></div>
             </dl>
           </section>
         </aside>

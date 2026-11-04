@@ -11,6 +11,10 @@
   margin-bottom: 2px;
 }
 
+.role-picker .role-card:last-child:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
 .role-card {
   position: relative;
   display: flex;
