@@ -40,7 +40,12 @@ export class Register {
   readonly showPassword = signal(false);
   readonly formSubmitted = signal(false);
 
-  readonly roles: { value: UserRole; title: string; description: string; icon: 'bike' | 'wrench' }[] = [
+  readonly roles: {
+    value: UserRole;
+    title: string;
+    description: string;
+    icon: 'bike' | 'wrench' | 'grid';
+  }[] = [
     {
       value: 'CUSTOMER',
       title: 'I ride',
@@ -52,6 +57,12 @@ export class Register {
       title: 'I fix bikes',
       description: 'Earn as a verified partner',
       icon: 'wrench',
+    },
+    {
+      value: 'ADMIN',
+      title: 'I run operations',
+      description: 'Dispatch, verify, and monitor',
+      icon: 'grid',
     },
   ];
 
@@ -105,20 +116,31 @@ export class Register {
     };
   });
 
-  readonly heading = computed(() =>
-    this.roleValue() === 'MECHANIC'
-      ? 'Join as a mechanic'
-      : 'Create your account',
-  );
+  readonly heading = computed(() => {
+    switch (this.roleValue()) {
+      case 'MECHANIC':
+        return 'Join as a mechanic';
+      case 'ADMIN':
+        return 'Create an operations account';
+      default:
+        return 'Create your account';
+    }
+  });
 
-  readonly subheading = computed(() =>
-    this.roleValue() === 'MECHANIC'
-      ? 'Apply to earn with MotoRescue. We verify every partner before their first job.'
-      : 'Free to join. Request help, track a rescue, and keep your bikes in one place.',
-  );
+  readonly subheading = computed(() => {
+    switch (this.roleValue()) {
+      case 'MECHANIC':
+        return 'Apply to earn with MotoRescue. We verify every partner before their first job.';
+      case 'ADMIN':
+        return 'Run dispatch, verify partners, and monitor every live rescue from one console.';
+      default:
+        return 'Free to join. Request help, track a rescue, and keep your bikes in one place.';
+    }
+  });
 
   /** Template helper: the role radio group lives on the reactive form. */
   readonly isMechanic = computed(() => this.roleValue() === 'MECHANIC');
+  readonly isAdmin = computed(() => this.roleValue() === 'ADMIN');
 
   constructor() {
     const role = this.route.snapshot.queryParamMap.get('role');
@@ -221,7 +243,7 @@ export class Register {
 
   private friendlyError(error: HttpErrorResponse): string {
     if (error.status === 0) {
-      return 'We could not reach the MotoRescue service. Check your connection, or try a demo workspace from the login page.';
+      return 'We could not reach the MotoRescue service. Check that the backend is running and try again.';
     }
 
     const message = (error.error as { message?: string } | null)?.message;

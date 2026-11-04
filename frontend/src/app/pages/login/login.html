@@ -79,21 +79,6 @@
     </button>
   </form>
 
-  <div class="divider">or preview without an account</div>
-
-  <div class="demo-grid">
-    @for (demo of demos; track demo.role) {
-      <button type="button" class="demo-btn" (click)="openDemo(demo.role)">
-        <app-icon [name]="demo.icon" [size]="18" />
-        {{ demo.label }}
-      </button>
-    }
-  </div>
-
-  <p class="demo-note">
-    Safe, local demo workspaces with sample data. No account needed.
-  </p>
-
   <div class="switch">
     New to MotoRescue?
     <a routerLink="/register">Create an account</a>

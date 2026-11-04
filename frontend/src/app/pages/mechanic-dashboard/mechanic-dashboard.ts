@@ -1,26 +1,37 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
+import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
+import { ApiRescueRequest } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
-import { Icon, IconName } from '../../shared/icon/icon';
+import { Icon } from '../../shared/icon/icon';
 
 type MechanicTab = 'overview' | 'earnings' | 'profile';
-type JobStatus = 'accepted' | 'en_route' | 'arrived';
 
-interface Job {
+interface PayoutRow {
   id: string;
+  date: string;
+  amount: string;
+  status: string;
+}
+
+interface RecentRow {
+  id: string;
+  date: string;
   customer: string;
-  initials: string;
   service: string;
-  icon: IconName;
-  vehicle: string;
-  distance: string;
-  payout: number;
-  eta: string;
-  note: string;
-  status: JobStatus;
+  amount: string;
 }
 
 @Component({
@@ -34,14 +45,82 @@ export class MechanicDashboard {
   readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly toasts = inject(ToastService);
+  private readonly api = inject(ApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<MechanicTab>('overview');
-  readonly online = signal(true);
-  readonly incoming = signal<Job | null>(null);
-  readonly active = signal<Job | null>(null);
-  readonly queue = signal<Job[]>([]);
-  readonly earningsToday = signal(1240);
-  readonly jobsToday = signal(6);
+  readonly online = signal(this.auth.user()?.online ?? false);
+  readonly openJobs = signal<ApiRescueRequest[]>([]);
+  readonly myJobs = signal<ApiRescueRequest[]>([]);
+
+  readonly active = computed(
+    () =>
+      this.myJobs().find(
+        (job) => job.status === 'EN_ROUTE' || job.status === 'ARRIVED',
+      ) ?? null,
+  );
+
+  readonly incoming = computed(() => {
+    if (!this.online() || this.active()) return null;
+    return this.openJobs()[0] ?? null;
+  });
+
+  readonly queue = computed(() => {
+    if (!this.online()) return [];
+    return this.openJobs().slice(this.incoming() ? 1 : 0, 4);
+  });
+
+  readonly weekJobs = computed(() => {
+    const cutoff = Date.now() - 7 * 86400000;
+    return this.completedJobs().filter(
+      (job) => job.completedAt && new Date(job.completedAt).getTime() >= cutoff,
+    ).length;
+  });
+
+  readonly weekEarnings = computed(() => {
+    const cutoff = Date.now() - 7 * 86400000;
+    return this.completedJobs()
+      .filter((job) => job.completedAt && new Date(job.completedAt).getTime() >= cutoff)
+      .reduce((total, job) => total + (job.payout ?? 0), 0);
+  });
+
+  readonly averagePayout = computed(() => {
+    const jobs = this.completedJobs();
+    if (!jobs.length) return 0;
+    return Math.round(
+      jobs.reduce((total, job) => total + (job.payout ?? 0), 0) / jobs.length,
+    );
+  });
+
+  readonly joinedLabel = computed(() => {
+    const createdAt = this.auth.user()?.createdAt;
+    if (!createdAt) return '—';
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(date);
+  });
+
+  readonly completedJobs = computed(() =>
+    this.myJobs().filter((job) => job.status === 'COMPLETED'),
+  );
+
+  readonly earningsToday = computed(() => {
+    const today = new Date().toDateString();
+    return this.completedJobs()
+      .filter((job) => job.completedAt && new Date(job.completedAt).toDateString() === today)
+      .reduce((total, job) => total + (job.payout ?? 0), 0);
+  });
+
+  readonly jobsToday = computed(() => {
+    const today = new Date().toDateString();
+    return this.completedJobs().filter(
+      (job) => job.completedAt && new Date(job.completedAt).toDateString() === today,
+    ).length;
+  });
+
+  readonly lifetimeEarnings = computed(() =>
+    this.completedJobs().reduce((total, job) => total + (job.payout ?? 0), 0),
+  );
 
   readonly navItems = computed<NavItem[]>(() => [
     {
@@ -83,66 +162,88 @@ export class MechanicDashboard {
     }
   });
 
-  readonly weekly = [
-    { day: 'Mon', value: 42, amount: '₹820' },
-    { day: 'Tue', value: 64, amount: '₹1,240' },
-    { day: 'Wed', value: 38, amount: '₹740' },
-    { day: 'Thu', value: 72, amount: '₹1,390' },
-    { day: 'Fri', value: 88, amount: '₹1,710' },
-    { day: 'Sat', value: 100, amount: '₹1,940' },
-    { day: 'Sun', value: 56, amount: '₹1,080' },
-  ];
+  readonly weekly = computed(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const amounts = new Map<string, number>();
+    const counts = new Map<string, number>();
+    const now = new Date();
 
-  readonly payouts = [
-    { id: 'PO-8841', date: '02 Nov 2026', amount: '₹3,420', status: 'Processing' },
-    { id: 'PO-8790', date: '26 Oct 2026', amount: '₹6,780', status: 'Paid' },
-    { id: 'PO-8731', date: '19 Oct 2026', amount: '₹5,940', status: 'Paid' },
-    { id: 'PO-8677', date: '12 Oct 2026', amount: '₹7,120', status: 'Paid' },
-  ];
+    for (const job of this.completedJobs()) {
+      if (!job.completedAt) continue;
+      const date = new Date(job.completedAt);
+      const diff = Math.floor((now.getTime() - date.getTime()) / 86400000);
+      if (diff > 6) continue;
+      const key = date.toDateString();
+      amounts.set(key, (amounts.get(key) ?? 0) + (job.payout ?? 0));
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
 
-  readonly recentJobs = [
-    { id: 'MR-2477', date: 'Today', customer: 'Aarav Mehta', service: 'Puncture repair', amount: '₹278' },
-    { id: 'MR-2452', date: 'Today', customer: 'Meera Joshi', service: 'Battery jump-start', amount: '₹249' },
-    { id: 'MR-2438', date: 'Yesterday', customer: 'Rahul Verma', service: 'Chain adjustment', amount: '₹229' },
-  ];
+    let max = 0;
+    const rows = days.map((day, index) => {
+      const date = new Date(now);
+      const offset = (now.getDay() + 6 - index) % 7;
+      date.setDate(now.getDate() - offset);
+      const value = amounts.get(date.toDateString()) ?? 0;
+      max = Math.max(max, value);
+      return {
+        day,
+        count: counts.get(date.toDateString()) ?? 0,
+        value,
+        amount: `₹${value}`,
+      };
+    });
+
+    return rows.map((row) => ({
+      ...row,
+      value: max === 0 ? 6 : Math.max(6, Math.round((row.value * 100) / max)),
+    }));
+  });
+
+  readonly weekLabel = computed(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 6);
+    const format = new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' });
+    return `${format.format(start)} – ${format.format(end)}`;
+  });
+
+  readonly payouts = computed<PayoutRow[]>(() =>
+    this.completedJobs().map((job) => ({
+      id: job.reference,
+      date: this.formatDate(job.completedAt ?? job.createdAt),
+      amount: `₹${job.payout ?? 0}`,
+      status: 'Settled',
+    })),
+  );
+
+  readonly recentJobs = computed<RecentRow[]>(() =>
+    this.completedJobs()
+      .slice(0, 3)
+      .map((job) => ({
+        id: job.reference,
+        date: this.formatDate(job.completedAt ?? job.createdAt),
+        customer: job.riderName ?? 'Rider',
+        service: job.serviceLabel ?? 'Rescue',
+        amount: `₹${job.payout ?? 0}`,
+      })),
+  );
 
   readonly radiusOptions = ['5 km', '8 km', '12 km', '20 km'];
 
   readonly profileForm = this.fb.nonNullable.group({
     fullName: [this.auth.user()?.fullName ?? '', [Validators.required, Validators.minLength(2)]],
     phone: [this.auth.user()?.phone ?? '', [Validators.required]],
-    workshop: ['Kumar Two-Wheelers, Whitefield', [Validators.required]],
+    workshop: [this.auth.user()?.workshop ?? '', [Validators.required]],
     radius: ['12 km', [Validators.required]],
   });
 
   constructor() {
-    this.incoming.set({
-      id: 'MR-2493',
-      customer: 'Sneha Patil',
-      initials: 'SP',
-      service: 'Battery jump-start',
-      icon: 'battery',
-      vehicle: 'Yamaha MT-15 · KA 05 EF 9012',
-      distance: '2.1 km',
-      payout: 320,
-      eta: '6 min',
-      note: 'Bike will not start. I am in the office parking basement, level B1.',
-      status: 'accepted',
-    });
+    this.loadJobs();
+    this.profileForm.controls.radius.setValue('12 km');
 
-    this.active.set({
-      id: 'MR-2477',
-      customer: 'Aarav Mehta',
-      initials: 'AM',
-      service: 'Puncture & tyre repair',
-      icon: 'tire',
-      vehicle: 'Hero Splendor · KA 05 AB 1234',
-      distance: '0.8 km',
-      payout: 278,
-      eta: '4 min',
-      note: 'Rear tyre is losing pressure. Pulled over near the Forum mall underpass.',
-      status: 'en_route',
-    });
+    interval(3000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadJobs());
   }
 
   setTab(tab: string): void {
@@ -150,53 +251,87 @@ export class MechanicDashboard {
   }
 
   toggleOnline(): void {
+    const mechanicId = this.auth.user()?.id;
+    if (!mechanicId) return;
+
     const next = !this.online();
     this.online.set(next);
 
-    if (next) {
-      this.toasts.show('You are online. New job requests will appear here.', 'success');
-      if (!this.incoming() && !this.active()) {
-        setTimeout(() => this.offerDemoJob(), 1800);
-      }
-    } else {
-      this.incoming.set(null);
-      this.toasts.show('You are offline. You will not receive new requests.', 'info');
-    }
+    this.api.setOnline(mechanicId, next).subscribe({
+      next: (user) => {
+        this.auth.applyUser(user);
+        this.online.set(user.online);
+        this.toasts.show(
+          next
+            ? 'You are online. New rider requests will appear here.'
+            : 'You are offline. You will not receive new requests.',
+          next ? 'success' : 'info',
+        );
+        this.loadJobs();
+      },
+      error: () => {
+        this.online.set(!next);
+        this.toasts.show('Could not change your availability. Try again.', 'error');
+      },
+    });
   }
 
   acceptJob(): void {
     const job = this.incoming();
-    if (!job) return;
+    const mechanicId = this.auth.user()?.id;
+    if (!job || !mechanicId) return;
 
-    this.incoming.set(null);
-
-    if (!this.active()) {
-      this.active.set({ ...job, status: 'en_route' });
-      this.toasts.show(`Job accepted. Head to ${job.distance} away.`, 'success');
-      return;
-    }
-
-    this.queue.update((queue) => [...queue, { ...job, status: 'accepted' }]);
-    this.toasts.show('Job accepted and added to your queue.', 'success');
+    this.api.acceptRequest(job.id, mechanicId).subscribe({
+      next: (request) => {
+        this.toasts.show(
+          `Job accepted. Head to ${request.location ?? 'the rider'} — they can see you on the map now.`,
+          'success',
+        );
+        this.loadJobs();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not accept this job.'), 'error');
+        this.loadJobs();
+      },
+    });
   }
 
   declineJob(): void {
-    this.incoming.set(null);
-    this.toasts.show('Request declined. It will be offered to another mechanic.', 'info');
+    const job = this.incoming();
+    if (!job) return;
+
+    this.openJobs.update((jobs) => jobs.filter((item) => item.id !== job.id));
+    this.toasts.show('Request declined. It stays visible to other mechanics.', 'info');
   }
 
   advanceJob(): void {
     const job = this.active();
-    if (!job) return;
+    const mechanicId = this.auth.user()?.id;
+    if (!job || !mechanicId) return;
 
-    if (job.status === 'en_route') {
-      this.active.set({ ...job, status: 'arrived' });
-      this.toasts.show('Marked as arrived. Start the repair when ready.', 'success');
+    if (job.status === 'EN_ROUTE') {
+      this.api.arriveRequest(job.id, mechanicId).subscribe({
+        next: () => {
+          this.toasts.show('Marked as arrived. The rider has been notified.', 'success');
+          this.loadJobs();
+        },
+        error: (error: unknown) => {
+          this.toasts.show(this.errorMessage(error, 'Could not update the job.'), 'error');
+        },
+      });
       return;
     }
 
-    if (job.status === 'arrived') {
-      this.completeJob(job);
+    if (job.status === 'ARRIVED') {
+      this.api.completeRequest(job.id, mechanicId).subscribe({
+        next: () => {
+          this.toasts.show('Job complete. The rider and admin dashboards are updated.', 'success');
+          this.loadJobs();
+        },
+        error: (error: unknown) => {
+          this.toasts.show(this.errorMessage(error, 'Could not complete the job.'), 'error');
+        },
+      });
     }
   }
 
@@ -210,42 +345,88 @@ export class MechanicDashboard {
       return;
     }
 
+    const id = this.auth.user()?.id;
+    if (!id) return;
+
     const value = this.profileForm.getRawValue();
-    this.auth.updateProfile({ fullName: value.fullName.trim(), phone: value.phone });
-    this.toasts.show('Mechanic profile updated.', 'success');
+    const radius = Number.parseInt(value.radius, 10) || 12;
+
+    this.api
+      .updateUser(id, {
+        fullName: value.fullName.trim(),
+        phone: value.phone.trim(),
+        workshop: value.workshop.trim(),
+        serviceRadiusKm: radius,
+      })
+      .subscribe({
+        next: (user) => {
+          this.auth.applyUser(user);
+          this.toasts.show('Mechanic profile updated.', 'success');
+        },
+        error: (error: unknown) => {
+          this.toasts.show(this.errorMessage(error, 'Could not update your profile.'), 'error');
+        },
+      });
   }
 
-  private completeJob(job: Job): void {
-    this.earningsToday.update((total) => total + job.payout);
-    this.jobsToday.update((count) => count + 1);
-
-    const next = this.queue()[0] ?? null;
-    this.queue.update((queue) => queue.slice(1));
-    this.active.set(next ? { ...next, status: 'en_route' } : null);
-
-    this.toasts.show(`Job complete. ₹${job.payout} added to today's earnings.`, 'success');
-
-    if (!next && this.online()) {
-      setTimeout(() => this.offerDemoJob(), 4000);
-    }
+  fullNameError(): string {
+    const control = this.profileForm.controls.fullName;
+    if (!control.touched) return '';
+    if (control.hasError('required')) return 'Enter your full name.';
+    if (control.hasError('minlength')) return 'Use at least 2 characters.';
+    return '';
   }
 
-  private offerDemoJob(): void {
-    if (!this.online() || this.incoming() || this.active() || this.queue().length) return;
+  phoneError(): string {
+    const control = this.profileForm.controls.phone;
+    if (!control.touched) return '';
+    return control.hasError('required') ? 'Enter a mobile number riders can reach.' : '';
+  }
 
-    this.incoming.set({
-      id: `MR-${Math.floor(2500 + Math.random() * 400)}`,
-      customer: 'Nikhil Shetty',
-      initials: 'NS',
-      service: 'Fuel delivery',
-      icon: 'fuel',
-      vehicle: 'TVS Apache RTR 200 · KA 05 GH 3344',
-      distance: '3.4 km',
-      payout: 199,
-      eta: '9 min',
-      note: 'Ran out of fuel on the service road near Hope Farm junction.',
-      status: 'accepted',
+  workshopError(): string {
+    const control = this.profileForm.controls.workshop;
+    if (!control.touched) return '';
+    return control.hasError('required') ? 'Enter your workshop or base area.' : '';
+  }
+
+  initialsFor(name?: string): string {
+    if (!name) return 'RD';
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
+  }
+
+  private loadJobs(): void {
+    const mechanicId = this.auth.user()?.id;
+    if (!mechanicId) return;
+
+    this.api.openRequests().subscribe({
+      next: (jobs) => this.openJobs.set(jobs),
+      error: () => this.openJobs.set([]),
     });
-    this.toasts.show('New job request nearby.', 'info');
+
+    this.api.mechanicRequests(mechanicId).subscribe({
+      next: (jobs) => this.myJobs.set(jobs),
+      error: () => this.myJobs.set([]),
+    });
+  }
+
+  private formatDate(value?: string): string {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  }
+
+  private errorMessage(error: unknown, fallback: string): string {
+    const message = (error as { error?: { message?: string } })?.error?.message;
+    return typeof message === 'string' && message ? message : fallback;
   }
 }

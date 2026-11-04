@@ -72,9 +72,25 @@ public class AuthController {
         body.put("fullName", user.getFullName());
         body.put("email", user.getEmail());
         body.put("role", user.getRole());
+        body.put("online", user.isOnline());
+        body.put("verified", user.isVerified());
+        body.put("rating", user.getRating());
+        body.put("totalJobs", user.getTotalJobs());
+        if (user.getCreatedAt() != null) {
+            body.put("createdAt", user.getCreatedAt().toString());
+        }
 
         if (user.getPhone() != null) {
             body.put("phone", user.getPhone());
+        }
+        if (user.getWorkshop() != null) {
+            body.put("workshop", user.getWorkshop());
+        }
+        if (user.getCity() != null) {
+            body.put("city", user.getCity());
+        }
+        if (user.getSpecialty() != null) {
+            body.put("specialty", user.getSpecialty());
         }
 
         return body;

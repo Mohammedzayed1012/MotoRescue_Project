@@ -16,6 +16,14 @@ export const authGuard: CanActivateFn = (_route, state) => {
   });
 };
 
+/** Signed-in users belong in their workspace, not on the login or sign-up screen. */
+export const guestGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  return auth.isAuthenticated() ? router.createUrlTree([auth.dashboardPath()]) : true;
+};
+
 export function roleGuard(role: UserRole): CanActivateFn {
   return () => {
     const auth = inject(AuthService);

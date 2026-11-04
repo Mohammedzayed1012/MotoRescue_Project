@@ -6,7 +6,14 @@ export interface AuthUser {
   email: string;
   phone?: string;
   role: UserRole;
-  demo?: boolean;
+  online?: boolean;
+  verified?: boolean;
+  workshop?: string;
+  city?: string;
+  specialty?: string;
+  rating?: number;
+  totalJobs?: number;
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -15,6 +22,15 @@ export interface AuthResponse {
   fullName?: string;
   email?: string;
   role?: string;
+  phone?: string;
+  online?: boolean;
+  verified?: boolean;
+  workshop?: string;
+  city?: string;
+  specialty?: string;
+  rating?: number;
+  totalJobs?: number;
+  createdAt?: string;
 }
 
 export interface LoginPayload {
@@ -30,57 +46,105 @@ export interface RegisterPayload {
   role: UserRole;
 }
 
-export interface ServiceType {
-  id: string;
-  label: string;
-  icon: string;
-  description: string;
-  price: string;
-}
-
-export interface Mechanic {
-  id: string;
-  name: string;
-  initials: string;
-  rating: number;
-  jobs: number;
-  distance: string;
-  specialty: string;
+export interface ApiUser {
+  id: number;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  workshop?: string;
+  city?: string;
+  specialty?: string;
+  serviceRadiusKm?: number;
+  online: boolean;
   verified: boolean;
-  tone: 'brand' | 'green' | 'blue';
-}
-
-export type RequestStatus = 'searching' | 'assigned' | 'en_route' | 'arrived' | 'completed';
-
-export interface RescueRequest {
-  id: string;
-  service: string;
-  icon: string;
-  bike: string;
-  location: string;
-  status: RequestStatus;
-  eta: string;
-  price: string;
-  note?: string;
-  mechanic?: Mechanic;
-  createdAt: string;
-}
-
-export interface HistoryEntry {
-  id: string;
-  date: string;
-  service: string;
-  mechanic: string;
-  bike: string;
-  amount: string;
-  status: 'Completed' | 'Cancelled';
+  rating: number;
+  totalJobs: number;
+  createdAt?: string;
 }
 
 export interface Bike {
-  id: string;
+  id: number;
+  ownerId: number;
   name: string;
   regNo: string;
   year: string;
   odometer: string;
-  tone: 'brand' | 'green' | 'blue';
+  primaryBike: boolean;
+  createdAt?: string;
+}
+
+export type RequestStatus =
+  | 'SEARCHING'
+  | 'EN_ROUTE'
+  | 'ARRIVED'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export interface ApiRescueRequest {
+  id: number;
+  reference: string;
+  riderId: number;
+  riderName?: string;
+  riderPhone?: string;
+  mechanicId?: number;
+  mechanicName?: string;
+  mechanicPhone?: string;
+  serviceId?: string;
+  serviceLabel?: string;
+  icon?: string;
+  bikeLabel?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+  status: RequestStatus;
+  quote?: string;
+  payout?: number;
+  etaMinutes?: number;
+  distance?: string;
+  createdAt?: string;
+  acceptedAt?: string;
+  arrivedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+}
+
+export interface WeeklyPoint {
+  day: string;
+  count: number;
+  value: number;
+}
+
+export interface PlatformStats {
+  activeRequests: number;
+  searching: number;
+  inProgress: number;
+  completedToday: number;
+  revenueToday: number;
+  mechanicsTotal: number;
+  mechanicsOnline: number;
+  ridersTotal: number;
+  avgResponseMinutes: number;
+  weekly: WeeklyPoint[];
+}
+
+export interface CreateRequestPayload {
+  riderId: number;
+  serviceId: string;
+  serviceLabel: string;
+  icon: string;
+  bikeLabel: string;
+  location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string;
+}
+
+export interface AddBikePayload {
+  ownerId: number;
+  name: string;
+  regNo: string;
+  year: string;
+  odometer?: string;
 }

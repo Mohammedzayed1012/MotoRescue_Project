@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import {
+  ApiUser,
   AuthResponse,
   AuthUser,
   LoginPayload,
@@ -34,45 +35,31 @@ export class AuthService {
     );
   }
 
-  /** Opens a clearly-labelled local workspace so the product can be reviewed without the API. */
-  startDemo(role: UserRole): AuthUser {
-    const demoUsers: Record<UserRole, AuthUser> = {
-      CUSTOMER: {
-        fullName: 'Aarav Mehta',
-        email: 'aarav@demo.motorescue',
-        phone: '+91 98765 43210',
-        role: 'CUSTOMER',
-        demo: true,
-      },
-      MECHANIC: {
-        fullName: 'Ravi Kumar',
-        email: 'ravi@demo.motorescue',
-        phone: '+91 98111 22334',
-        role: 'MECHANIC',
-        demo: true,
-      },
-      ADMIN: {
-        fullName: 'Priya Nair',
-        email: 'priya@demo.motorescue',
-        phone: '+91 90000 11223',
-        role: 'ADMIN',
-        demo: true,
-      },
-    };
-
-    const user = demoUsers[role];
-    this.user.set(user);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-
-    return user;
-  }
-
   logout(): void {
     this.user.set(null);
     localStorage.removeItem(STORAGE_KEY);
   }
 
-  updateProfile(changes: Partial<Pick<AuthUser, 'fullName' | 'phone'>>): void {
+  /** Keeps the local session in sync after a persisted profile change. */
+  applyUser(user: ApiUser): void {
+    const current = this.user();
+    if (!current) return;
+
+    this.updateProfile({
+      fullName: user.fullName,
+      phone: user.phone,
+      online: user.online,
+      verified: user.verified,
+      workshop: user.workshop,
+      city: user.city,
+      specialty: user.specialty,
+      rating: user.rating,
+      totalJobs: user.totalJobs,
+      createdAt: user.createdAt,
+    });
+  }
+
+  updateProfile(changes: Partial<AuthUser>): void {
     const current = this.user();
     if (!current) return;
 
@@ -99,15 +86,22 @@ export class AuthService {
     fallbackEmail: string,
     fallbackRole: UserRole = 'CUSTOMER',
   ): void {
-    const current = this.user();
-    const role = this.normalizeRole(response.role) ?? current?.role ?? fallbackRole;
+    const role = this.normalizeRole(response.role) ?? fallbackRole;
 
     const user: AuthUser = {
       id: response.userId,
-      fullName: response.fullName || current?.fullName || fallbackEmail.split('@')[0],
+      fullName: response.fullName || fallbackEmail.split('@')[0],
       email: response.email || fallbackEmail,
-      phone: current?.phone,
+      phone: response.phone,
       role,
+      online: response.online ?? false,
+      verified: response.verified ?? false,
+      workshop: response.workshop,
+      city: response.city,
+      specialty: response.specialty,
+      rating: response.rating ?? 0,
+      totalJobs: response.totalJobs ?? 0,
+      createdAt: response.createdAt,
     };
 
     this.user.set(user);
@@ -121,6 +115,10 @@ export class AuthService {
 
       const parsed = JSON.parse(raw) as AuthUser;
       if (!parsed?.email || !parsed?.role) return null;
+      if ((parsed as AuthUser & { demo?: boolean }).demo) {
+        localStorage.removeItem(STORAGE_KEY);
+        return null;
+      }
 
       return parsed;
     } catch {
