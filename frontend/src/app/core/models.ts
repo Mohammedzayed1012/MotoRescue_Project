@@ -60,6 +60,41 @@ export interface ApiUser {
   verified: boolean;
   rating: number;
   totalJobs: number;
+  createdAt: string;
+}
+export interface BookingRequest {
+  customerId: number;
+  service: string;
+  bike: string;
+  location: string;
+  notes?: string;
+}
+
+export interface BookingResponse extends Omit<BookingRequest, 'customerId'> {
+  id: number;
+  customerId: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface ServiceType {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  price: string;
+}
+
+export interface Mechanic {
+  id: string;
+  name: string;
+  initials: string;
+  jobs: number;
+  distance: string;
+  specialty: string;
+  verified: boolean;
+  rating: number;
+  totalJobs: number;
   createdAt?: string;
 }
 
