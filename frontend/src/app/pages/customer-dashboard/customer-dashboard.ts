@@ -12,6 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { ApiService } from '../../core/api.service';
+import { BookingService } from '../../core/booking.service';
 import { ToastService } from '../../core/toast.service';
 import { ApiRescueRequest, ApiUser, Bike, RequestStatus } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
@@ -253,8 +254,8 @@ export class CustomerDashboard {
       return;
     }
 
-    const riderId = this.auth.user()?.id;
-    if (!riderId) {
+    const user = this.auth.user();
+    if (!user?.id) {
       this.toasts.show('Please log in again to request a rescue.', 'error');
       return;
     }
@@ -267,10 +268,9 @@ export class CustomerDashboard {
       : 'Other bike';
 
     this.requesting.set(true);
-
     this.api
       .createRequest({
-        riderId,
+        riderId: user.id,
         serviceId: value.service,
         serviceLabel: service?.label ?? 'Roadside assistance',
         icon: service?.icon ?? 'wrench',
