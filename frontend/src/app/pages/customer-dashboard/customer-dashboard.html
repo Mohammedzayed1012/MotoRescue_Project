@@ -726,7 +726,9 @@
             <span class="support-mini__icon"><app-icon name="headset" [size]="20" /></span>
             <h3>Need to change something?</h3>
             <p>Our team can update your email, close your account, or help with a receipt.</p>
-            <a class="btn btn-outline btn-sm" href="mailto:support@motorescue.com">Contact support</a>
+            <button type="button" class="btn btn-outline btn-sm" (click)="callSupport()">
+              Chat with the rescue desk
+            </button>
           </section>
         </aside>
       </div>

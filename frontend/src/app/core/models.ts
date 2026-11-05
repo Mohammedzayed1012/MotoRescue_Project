@@ -145,6 +145,41 @@ export interface ApiRescueRequest {
   cancelledAt?: string;
 }
 
+export type SupportSenderRole = 'CUSTOMER' | 'ADMIN';
+
+export interface SupportThread {
+  id: number;
+  riderId: number;
+  riderName?: string;
+  riderEmail?: string;
+  riderPhone?: string;
+  issue?: string;
+  requestReference?: string;
+  requestStatus?: string;
+  lastMessage?: string;
+  lastSenderRole?: SupportSenderRole;
+  adminUnread: number;
+  riderUnread: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SupportMessage {
+  id: number;
+  threadId: number;
+  senderRole: SupportSenderRole;
+  senderName?: string;
+  body: string;
+  createdAt?: string;
+}
+
+export interface OpenSupportThreadPayload {
+  riderId: number;
+  issue?: string;
+  requestReference?: string;
+  requestStatus?: string;
+}
+
 export interface WeeklyPoint {
   day: string;
   count: number;

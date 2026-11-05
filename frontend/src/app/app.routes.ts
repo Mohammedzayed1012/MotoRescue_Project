@@ -27,6 +27,12 @@ export const routes: Routes = [
       import('./pages/customer-dashboard/customer-dashboard').then((m) => m.CustomerDashboard),
   },
   {
+    path: 'support',
+    title: 'Rescue desk - MotoRescue',
+    canActivate: [authGuard, roleGuard('CUSTOMER')],
+    loadComponent: () => import('./pages/support-chat/support-chat').then((m) => m.SupportChat),
+  },
+  {
     path: 'mechanic',
     title: 'Mechanic workspace — MotoRescue',
     canActivate: [authGuard, roleGuard('MECHANIC')],

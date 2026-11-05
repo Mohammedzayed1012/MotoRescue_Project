@@ -11,11 +11,11 @@ import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
-import { ApiRescueRequest, ApiUser, PlatformStats } from '../../core/models';
+import { ApiRescueRequest, ApiUser, PlatformStats, SupportMessage, SupportThread } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon, IconName } from '../../shared/icon/icon';
 
-type AdminTab = 'overview' | 'requests' | 'mechanics' | 'settings';
+type AdminTab = 'overview' | 'requests' | 'mechanics' | 'support' | 'settings';
 type RequestFilter = 'all' | 'searching' | 'in_progress' | 'completed' | 'cancelled';
 type RequestStatus = Exclude<RequestFilter, 'all'>;
 
@@ -85,6 +85,18 @@ export class AdminDashboard {
   readonly requests = signal<AdminRequest[]>([]);
   readonly stats = signal<PlatformStats | null>(null);
 
+  /* Rescue desk chat -------------------------------------------------- */
+  readonly supportThreads = signal<SupportThread[]>([]);
+  readonly activeThread = signal<SupportThread | null>(null);
+  readonly threadMessages = signal<SupportMessage[]>([]);
+  readonly replyText = signal('');
+  readonly sendingReply = signal(false);
+  readonly loadingMessages = signal(false);
+
+  readonly supportUnread = computed(() =>
+    this.supportThreads().reduce((total, thread) => total + (thread.adminUnread ?? 0), 0),
+  );
+
   readonly navItems = computed<NavItem[]>(() => {
     const active = this.stats()?.activeRequests ?? 0;
     return [
@@ -96,6 +108,12 @@ export class AdminDashboard {
         badge: active > 0 ? String(active) : undefined,
       },
       { key: 'mechanics', label: 'Mechanics', icon: 'users' },
+      {
+        key: 'support',
+        label: 'Support inbox',
+        icon: 'headset',
+        badge: this.supportUnread() > 0 ? String(this.supportUnread()) : undefined,
+      },
       { key: 'settings', label: 'Settings', icon: 'settings' },
     ];
   });
@@ -106,6 +124,8 @@ export class AdminDashboard {
         return 'Rescue requests';
       case 'mechanics':
         return 'Mechanic network';
+      case 'support':
+        return 'Rescue desk inbox';
       case 'settings':
         return 'Platform settings';
       default:
@@ -119,6 +139,8 @@ export class AdminDashboard {
         return 'Every live and completed request across all service zones.';
       case 'mechanics':
         return 'Verify partners, review performance, and manage coverage.';
+      case 'support':
+        return 'Every rider conversation, with the issue and request behind it.';
       case 'settings':
         return 'Dispatch preferences for this operations console.';
       default:
@@ -288,11 +310,21 @@ export class AdminDashboard {
 
     interval(4000)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadAll());
+      .subscribe(() => {
+        this.loadAll();
+        this.refreshThreadMessages();
+      });
   }
 
   setTab(tab: string): void {
     this.activeTab.set(tab as AdminTab);
+
+    if (tab === 'support' && !this.activeThread()) {
+      const first = this.supportThreads()[0];
+      if (first) {
+        this.openThread(first);
+      }
+    }
   }
 
   setFilter(filter: RequestFilter): void {
@@ -420,6 +452,123 @@ export class AdminDashboard {
       next: (users) => this.users.set(users),
       error: () => this.users.set([]),
     });
+
+    this.api.supportThreads().subscribe({
+      next: (threads) => {
+        this.supportThreads.set(threads);
+
+        const active = this.activeThread();
+        if (active) {
+          const fresh = threads.find((thread) => thread.id === active.id);
+          if (fresh) {
+            this.activeThread.set(fresh);
+          }
+        }
+      },
+      error: () => this.supportThreads.set([]),
+    });
+  }
+
+  /* Rescue desk chat -------------------------------------------------- */
+
+  openThread(thread: SupportThread): void {
+    this.activeThread.set(thread);
+    this.loadThreadMessages(thread.id);
+
+    this.api.markSupportRead(thread.id, 'ADMIN').subscribe({
+      next: (updated) => this.replaceThread(updated),
+      error: () => undefined,
+    });
+  }
+
+  sendReply(): void {
+    const thread = this.activeThread();
+    const body = this.replyText().trim();
+
+    if (!thread || !body || this.sendingReply()) {
+      return;
+    }
+
+    this.sendingReply.set(true);
+    this.api
+      .sendSupportMessage(thread.id, {
+        senderRole: 'ADMIN',
+        senderName: this.auth.user()?.fullName,
+        body,
+      })
+      .subscribe({
+        next: () => {
+          this.sendingReply.set(false);
+          this.replyText.set('');
+          this.loadThreadMessages(thread.id);
+        },
+        error: () => {
+          this.sendingReply.set(false);
+          this.toasts.show('Reply could not be sent. Try again.', 'error');
+        },
+      });
+  }
+
+  onReplyInput(event: Event): void {
+    this.replyText.set((event.target as HTMLTextAreaElement).value);
+  }
+
+  private loadThreadMessages(threadId: number): void {
+    this.loadingMessages.set(true);
+    this.api.supportMessages(threadId).subscribe({
+      next: (messages) => {
+        this.threadMessages.set(messages);
+        this.loadingMessages.set(false);
+      },
+      error: () => {
+        this.threadMessages.set([]);
+        this.loadingMessages.set(false);
+      },
+    });
+  }
+
+  private refreshThreadMessages(): void {
+    const thread = this.activeThread();
+    if (!thread) return;
+
+    this.api.supportMessages(thread.id).subscribe({
+      next: (messages) => {
+        const grew = messages.length > this.threadMessages().length;
+        this.threadMessages.set(messages);
+
+        if (grew) {
+          this.api.markSupportRead(thread.id, 'ADMIN').subscribe({
+            next: (updated) => this.replaceThread(updated),
+            error: () => undefined,
+          });
+        }
+      },
+      error: () => undefined,
+    });
+  }
+
+  private replaceThread(updated: SupportThread): void {
+    this.supportThreads.update((threads) =>
+      threads.map((thread) => (thread.id === updated.id ? updated : thread)),
+    );
+
+    if (this.activeThread()?.id === updated.id) {
+      this.activeThread.set(updated);
+    }
+  }
+
+  timeOf(value?: string): string {
+    if (!value) return '';
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  initialsOf(name?: string): string {
+    return (name ?? '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
   }
 
   private toAdminRequest(request: ApiRescueRequest): AdminRequest {

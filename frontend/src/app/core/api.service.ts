@@ -7,12 +7,16 @@ import {
   ApiUser,
   Bike,
   CreateRequestPayload,
+  OpenSupportThreadPayload,
   PlatformStats,
+  SupportMessage,
+  SupportSenderRole,
+  SupportThread,
 } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly base = 'http://localhost:8080/api';
+  private readonly base = '/api';
 
   constructor(private readonly http: HttpClient) {}
 
@@ -104,5 +108,37 @@ export class ApiService {
 
   setVerified(id: number, verified: boolean): Observable<ApiUser> {
     return this.http.put<ApiUser>(`${this.base}/users/${id}/verify`, { verified });
+  }
+
+  /* Rescue desk chat -------------------------------------------------- */
+
+  openSupportThread(payload: OpenSupportThreadPayload): Observable<SupportThread> {
+    return this.http.post<SupportThread>(`${this.base}/support/threads`, payload);
+  }
+
+  supportThreadForRider(riderId: number): Observable<SupportThread | null> {
+    return this.http.get<SupportThread | null>(`${this.base}/support/threads/rider/${riderId}`);
+  }
+
+  supportThreads(): Observable<SupportThread[]> {
+    return this.http.get<SupportThread[]>(`${this.base}/support/threads`);
+  }
+
+  supportMessages(threadId: number): Observable<SupportMessage[]> {
+    return this.http.get<SupportMessage[]>(`${this.base}/support/threads/${threadId}/messages`);
+  }
+
+  sendSupportMessage(
+    threadId: number,
+    payload: { senderRole: SupportSenderRole; senderName?: string; body: string },
+  ): Observable<SupportMessage> {
+    return this.http.post<SupportMessage>(
+      `${this.base}/support/threads/${threadId}/messages`,
+      payload,
+    );
+  }
+
+  markSupportRead(threadId: number, role: SupportSenderRole): Observable<SupportThread> {
+    return this.http.put<SupportThread>(`${this.base}/support/threads/${threadId}/read`, { role });
   }
 }

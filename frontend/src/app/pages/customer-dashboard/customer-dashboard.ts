@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
@@ -51,6 +51,7 @@ export class CustomerDashboard {
   private readonly fb = inject(FormBuilder);
   private readonly toasts = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -315,7 +316,7 @@ export class CustomerDashboard {
   }
 
   callSupport(): void {
-    this.toasts.show('Connecting you to the 24/7 rescue desk…', 'info');
+    this.router.navigate(['/support']);
   }
 
   useLiveLocation(): void {

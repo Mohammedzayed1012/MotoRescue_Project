@@ -1,0 +1,128 @@
+<div class="desk">
+  <header class="desk__bar">
+    <a routerLink="/" class="desk__brand" aria-label="MotoRescue home">
+      <app-logo size="sm" />
+    </a>
+
+    <span class="desk__status">
+      <span class="dot"></span>
+      Rescue desk · replies 24/7
+    </span>
+
+    <a routerLink="/customer" class="btn btn-ghost btn-sm desk__back">
+      <app-icon name="arrow-right" [size]="15" class="is-flipped" />
+      Rider dashboard
+    </a>
+  </header>
+
+  <main class="desk__body">
+    <section class="context">
+      <span class="context__icon"><app-icon name="headset" [size]="22" /></span>
+      <h1>Chat with the rescue desk</h1>
+      <p>
+        This is a direct line to the MotoRescue operations team. An admin sees your
+        request details and replies right here.
+      </p>
+
+      <dl class="context__list">
+        <div>
+          <dt>Rider</dt>
+          <dd>{{ auth.user()?.fullName }}</dd>
+        </div>
+        <div>
+          <dt>Rider ID</dt>
+          <dd>#{{ auth.user()?.id }}</dd>
+        </div>
+        <div>
+          <dt>Issue</dt>
+          <dd><span class="issue-chip">{{ issueLabel() }}</span></dd>
+        </div>
+        @if (requestReference()) {
+          <div>
+            <dt>Request</dt>
+            <dd>{{ requestReference() }}</dd>
+          </div>
+        }
+        @if (requestStatus()) {
+          <div>
+            <dt>Status</dt>
+            <dd class="status">{{ requestStatus() }}</dd>
+          </div>
+        }
+      </dl>
+
+      <p class="context__note">
+        <app-icon name="shield" [size]="14" />
+        Only you and the operations team can read this conversation.
+      </p>
+    </section>
+
+    <section class="chat">
+      <header class="chat__head">
+        <div class="chat__who">
+          <span class="avatar avatar--brand">OP</span>
+          <div>
+            <strong>MotoRescue operations</strong>
+            <span><span class="dot"></span> Online now</span>
+          </div>
+        </div>
+        <span class="badge badge--green">{{ messages().length }} messages</span>
+      </header>
+
+      <div class="chat__messages" #messagesEl>
+        @if (loading()) {
+          <div class="chat__empty">
+            <span class="chat__spinner" aria-hidden="true"></span>
+            <p>Connecting you to the rescue desk…</p>
+          </div>
+        } @else if (!messages().length) {
+          <div class="chat__empty">
+            <span class="chat__empty-icon"><app-icon name="message" [size]="24" /></span>
+            <h2>No messages yet</h2>
+            <p>Tell the team what you need. Include your request ID if you have one.</p>
+          </div>
+        } @else {
+          @for (message of messages(); track message.id) {
+            <article class="msg" [class.msg--mine]="message.senderRole === 'CUSTOMER'">
+              <span class="msg__avatar">
+                {{ message.senderRole === 'CUSTOMER' ? 'ME' : 'OP' }}
+              </span>
+              <div class="msg__bubble">
+                <span class="msg__author">
+                  {{ message.senderRole === 'CUSTOMER' ? 'You' : (message.senderName || 'Operations') }}
+                </span>
+                <p>{{ message.body }}</p>
+                <time>{{ timeOf(message.createdAt) }}</time>
+              </div>
+            </article>
+          }
+        }
+      </div>
+
+      @if (!loading()) {
+        <div class="chat__quick">
+          @for (reply of quickReplies; track reply) {
+            <button type="button" class="quick-chip" (click)="useQuickReply(reply)">
+              {{ reply }}
+            </button>
+          }
+        </div>
+      }
+
+      <form class="chat__composer" [formGroup]="form" (ngSubmit)="send()">
+        <textarea
+          class="chat__input"
+          formControlName="body"
+          rows="2"
+          placeholder="Write your message to the rescue desk…"
+          (keydown)="onKeydown($event)"
+        ></textarea>
+        <button type="submit" class="btn btn-primary" [disabled]="sending() || loading()">
+          {{ sending() ? 'Sending…' : 'Send' }}
+          <app-icon name="arrow-right" [size]="15" />
+        </button>
+      </form>
+      <span class="chat__hint">Press Enter to send · Shift + Enter for a new line</span>
+    </section>
+  </main>
+</div>
