@@ -14,8 +14,12 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
+                // The app is served from the same origin as the API, but it can
+                // also be reached through a tunnel or a deployed host. Allow any
+                // origin pattern so browser module scripts are not rejected by
+                // the CORS filter when the public host differs from localhost.
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:4200", "http://127.0.0.1:62007")
+                        .allowedOriginPatterns("*")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
             }
