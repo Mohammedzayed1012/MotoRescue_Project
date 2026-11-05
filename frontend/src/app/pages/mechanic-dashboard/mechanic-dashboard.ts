@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
@@ -46,6 +46,7 @@ export class MechanicDashboard {
   private readonly fb = inject(FormBuilder);
   private readonly toasts = inject(ToastService);
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<MechanicTab>('overview');
@@ -403,14 +404,23 @@ export class MechanicDashboard {
     const mechanicId = this.auth.user()?.id;
     if (!mechanicId) return;
 
+    this.api.mechanicRequests(mechanicId).subscribe({
+      next: (jobs) => {
+        // Admin can revoke verification at any time; end the session the
+        // moment the account is no longer an approved partner.
+        if (this.auth.user()?.role === 'MECHANIC' && this.auth.user()?.verified === false) {
+          this.auth.logout();
+          this.router.navigate(['/login'], { queryParams: { pending: 'mechanic' } });
+          return;
+        }
+        this.myJobs.set(jobs);
+      },
+      error: () => this.myJobs.set([]),
+    });
+
     this.api.openRequests().subscribe({
       next: (jobs) => this.openJobs.set(jobs),
       error: () => this.openJobs.set([]),
-    });
-
-    this.api.mechanicRequests(mechanicId).subscribe({
-      next: (jobs) => this.myJobs.set(jobs),
-      error: () => this.myJobs.set([]),
     });
   }
 

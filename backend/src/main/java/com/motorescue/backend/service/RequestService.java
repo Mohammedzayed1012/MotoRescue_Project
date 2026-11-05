@@ -65,6 +65,10 @@ public class RequestService {
             throw new RuntimeException("Only a mechanic can accept this request.");
         }
 
+        if (User.ROLE_MECHANIC.equals(mechanic.getRole()) && !mechanic.isVerified()) {
+            throw new RuntimeException("This mechanic account is awaiting admin approval.");
+        }
+
         request.setMechanicId(mechanic.getId());
         request.setMechanicName(mechanic.getFullName());
         request.setMechanicPhone(mechanic.getPhone());
@@ -158,6 +162,10 @@ public class RequestService {
         User mechanic = mechanicId == null ? pickMechanic() : userRepository.findById(mechanicId)
                 .orElseThrow(() -> new RuntimeException("Mechanic account not found."));
 
+        if (User.ROLE_MECHANIC.equals(mechanic.getRole()) && !mechanic.isVerified()) {
+            throw new RuntimeException("This mechanic account is awaiting admin approval.");
+        }
+
         request.setMechanicId(mechanic.getId());
         request.setMechanicName(mechanic.getFullName());
         request.setMechanicPhone(mechanic.getPhone());
@@ -230,8 +238,9 @@ public class RequestService {
         stats.put("inProgress", inProgress);
         stats.put("completedToday", completedToday);
         stats.put("revenueToday", revenueToday);
-        stats.put("mechanicsTotal", userRepository.countByRole(User.ROLE_MECHANIC));
-        stats.put("mechanicsOnline", userRepository.countByRoleAndOnlineTrue(User.ROLE_MECHANIC));
+        stats.put("mechanicsTotal", userRepository.countByRoleAndVerifiedTrue(User.ROLE_MECHANIC));
+        stats.put("mechanicsOnline",
+                userRepository.countByRoleAndVerifiedTrueAndOnlineTrue(User.ROLE_MECHANIC));
         stats.put("ridersTotal", userRepository.countByRole(User.ROLE_CUSTOMER));
         stats.put("avgResponseMinutes", Math.max(1, Math.round(averageResponse)));
         stats.put("weekly", weekly(today));
@@ -269,9 +278,13 @@ public class RequestService {
     }
 
     private User pickMechanic() {
-        List<User> mechanics = userRepository.findByRoleOrderByFullNameAsc(User.ROLE_MECHANIC);
+        List<User> mechanics = userRepository.findByRoleOrderByFullNameAsc(User.ROLE_MECHANIC)
+                .stream()
+                .filter(User::isVerified)
+                .toList();
+
         if (mechanics.isEmpty()) {
-            throw new RuntimeException("No mechanic accounts exist yet. Create one first.");
+            throw new RuntimeException("No approved mechanic accounts exist yet. Verify one first.");
         }
 
         return mechanics.stream()

@@ -57,6 +57,15 @@ public class AuthController {
 
             User user = authService.loginUser(email.trim().toLowerCase(), password);
 
+            // Mechanics only become active partners after an operations admin
+            // verifies their account. Until then they cannot access the app.
+            if (User.ROLE_MECHANIC.equals(user.getRole()) && !user.isVerified()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message",
+                                "Your mechanic account is awaiting admin approval. "
+                                        + "You can sign in once an admin verifies your account."));
+            }
+
             return ResponseEntity.ok(userResponse("Login successful!", user));
 
         } catch (RuntimeException e) {

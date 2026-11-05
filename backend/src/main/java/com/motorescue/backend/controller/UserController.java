@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +45,7 @@ public class UserController {
     public List<Map<String, Object>> mechanics() {
         return userRepository.findByRoleOrderByFullNameAsc(User.ROLE_MECHANIC)
                 .stream()
+                .filter(User::isVerified)
                 .map(this::safeUser)
                 .toList();
     }
@@ -77,6 +79,12 @@ public class UserController {
     public ResponseEntity<?> online(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found."));
+
+        if (User.ROLE_MECHANIC.equals(user.getRole()) && !user.isVerified()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message",
+                            "Your account is awaiting admin approval. You cannot go online yet."));
+        }
 
         user.setOnline(Boolean.TRUE.equals(body.get("online")));
 

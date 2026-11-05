@@ -37,6 +37,13 @@ export function roleGuard(role: UserRole): CanActivateFn {
       return router.createUrlTree([auth.dashboardPath()]);
     }
 
+    // Mechanics who have not been approved by an admin are not active
+    // partners yet. Clear any stale local session and send them to login.
+    if (role === 'MECHANIC' && !auth.user()?.verified) {
+      auth.logout();
+      return router.createUrlTree(['/login'], { queryParams: { pending: 'mechanic' } });
+    }
+
     return true;
   };
 }

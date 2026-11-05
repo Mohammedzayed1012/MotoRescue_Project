@@ -32,6 +32,14 @@ export class Login {
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
 
+  constructor() {
+    if (this.route.snapshot.queryParamMap.get('pending') === 'mechanic') {
+      this.notice.set(
+        'Application received. An admin must approve your mechanic account before you can sign in.',
+      );
+    }
+  }
+
   submit(): void {
     this.formSubmitted.set(true);
     this.error.set('');

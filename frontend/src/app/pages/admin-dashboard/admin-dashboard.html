@@ -60,7 +60,7 @@
             </div>
 
             <div class="card-head volume-card__foot">
-              <span><span class="dot dot--green"></span> {{ onlineMechanics() }} mechanics online</span>
+              <span><span class="dot dot--green"></span> {{ stats()?.mechanicsOnline ?? 0 }} mechanics online</span>
               <span><span class="dot dot--amber"></span> {{ stats()?.searching ?? 0 }} awaiting assignment</span>
               <span><span class="dot dot--red"></span> {{ stats()?.inProgress ?? 0 }} in progress</span>
             </div>
@@ -199,8 +199,8 @@
             <h3>Coverage snapshot</h3>
             <ul class="health__list">
               <li><span>Riders</span><strong>{{ ridersCount() }}</strong></li>
-              <li><span>Mechanics</span><strong>{{ mechanics().length }}</strong></li>
-              <li><span>Online now</span><strong class="is-good">{{ onlineMechanics() }}</strong></li>
+              <li><span>Approved mechanics</span><strong>{{ stats()?.mechanicsTotal ?? 0 }}</strong></li>
+              <li><span>Online now</span><strong class="is-good">{{ stats()?.mechanicsOnline ?? 0 }}</strong></li>
               <li><span>Network rating</span><strong>{{ networkRating() }}</strong></li>
             </ul>
           </section>
@@ -302,8 +302,8 @@
     <!-- Mechanics ---------------------------------------------------------->
     @case ('mechanics') {
       <div class="network-summary">
-        <div><strong>{{ mechanics().length }}</strong><span>Active partners</span></div>
-        <div><strong>{{ onlineMechanics() }}</strong><span>Online right now</span></div>
+        <div><strong>{{ stats()?.mechanicsTotal ?? 0 }}</strong><span>Active partners</span></div>
+        <div><strong>{{ stats()?.mechanicsOnline ?? 0 }}</strong><span>Online right now</span></div>
         <div><strong>{{ networkRating() }}</strong><span>Network rating</span></div>
         <div><strong>{{ pendingMechanics().length }}</strong><span>Awaiting verification</span></div>
       </div>

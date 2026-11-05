@@ -20,4 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole(String role);
 
     long countByRoleAndOnlineTrue(String role);
+
+    long countByRoleAndVerifiedTrue(String role);
+
+    long countByRoleAndVerifiedTrueAndOnlineTrue(String role);
 }

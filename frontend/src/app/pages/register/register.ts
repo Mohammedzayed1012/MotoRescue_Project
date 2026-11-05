@@ -172,6 +172,20 @@ export class Register {
       .subscribe({
         next: () => {
           this.loading.set(false);
+
+          if (value.role === 'MECHANIC') {
+            // A mechanic is not an active partner until an admin verifies the
+            // account, so we deliberately do not keep them signed in.
+            const name = value.fullName.trim().split(' ')[0];
+            this.auth.logout();
+            this.toasts.show(
+              `Application submitted, ${name}. An admin must approve your account before you can sign in.`,
+              'success',
+            );
+            this.router.navigate(['/login'], { queryParams: { pending: 'mechanic' } });
+            return;
+          }
+
           this.toasts.show(
             `Welcome to MotoRescue, ${this.auth.firstName()}. Your account is ready.`,
             'success',
