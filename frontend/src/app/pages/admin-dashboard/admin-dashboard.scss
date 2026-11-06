@@ -1037,3 +1037,58 @@
     max-height: 340px;
   }
 }
+
+/* Escalations and AI messages ------------------------------------------------ */
+
+.avatar--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.support-row__copy .support-row__reason {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--amber);
+  white-space: normal;
+}
+
+.support-chat__escalated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.support-chat__escalated .support-chat__reason {
+  flex: 1;
+  min-width: 140px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.support-chat__escalated .btn {
+  flex: 0 0 auto;
+}
+
+.thread-msg--ai {
+  max-width: 82%;
+}
+
+.thread-msg--ai .thread-msg__avatar {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.thread-msg--ai .thread-msg__bubble {
+  border-color: #d3ddf8;
+  background: var(--blue-soft);
+}
+
+.thread-msg--ai .thread-msg__author {
+  color: var(--blue);
+}

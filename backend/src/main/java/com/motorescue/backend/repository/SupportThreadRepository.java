@@ -12,4 +12,7 @@ public interface SupportThreadRepository extends JpaRepository<SupportThread, Lo
     Optional<SupportThread> findByRiderId(Long riderId);
 
     List<SupportThread> findAllByOrderByUpdatedAtDesc();
+
+    /** Escalated conversations stay at the top of the admin inbox. */
+    List<SupportThread> findAllByOrderByEscalatedDescUpdatedAtDesc();
 }

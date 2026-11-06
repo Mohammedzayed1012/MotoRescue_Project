@@ -120,6 +120,10 @@ export class ApiService {
     return this.http.get<SupportThread | null>(`${this.base}/support/threads/rider/${riderId}`);
   }
 
+  supportThread(threadId: number): Observable<SupportThread> {
+    return this.http.get<SupportThread>(`${this.base}/support/threads/${threadId}`);
+  }
+
   supportThreads(): Observable<SupportThread[]> {
     return this.http.get<SupportThread[]>(`${this.base}/support/threads`);
   }
@@ -140,5 +144,16 @@ export class ApiService {
 
   markSupportRead(threadId: number, role: SupportSenderRole): Observable<SupportThread> {
     return this.http.put<SupportThread>(`${this.base}/support/threads/${threadId}/read`, { role });
+  }
+
+  escalateSupportThread(
+    threadId: number,
+    payload: { reason: string; riderName?: string },
+  ): Observable<SupportThread> {
+    return this.http.post<SupportThread>(`${this.base}/support/threads/${threadId}/escalate`, payload);
+  }
+
+  resolveSupportThread(threadId: number): Observable<SupportThread> {
+    return this.http.post<SupportThread>(`${this.base}/support/threads/${threadId}/resolve`, {});
   }
 }

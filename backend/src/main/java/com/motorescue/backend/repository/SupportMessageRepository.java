@@ -8,5 +8,7 @@ import com.motorescue.backend.entity.SupportMessage;
 
 public interface SupportMessageRepository extends JpaRepository<SupportMessage, Long> {
 
-    List<SupportMessage> findByThreadIdOrderByCreatedAtAsc(Long threadId);
+    List<SupportMessage> findByThreadIdOrderByIdAsc(Long threadId);
+
+    long countByThreadId(Long threadId);
 }

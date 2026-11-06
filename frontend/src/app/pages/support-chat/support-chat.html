@@ -5,8 +5,12 @@
     </a>
 
     <span class="desk__status">
-      <span class="dot"></span>
-      Rescue desk · replies 24/7
+      <span class="dot" [class.dot--amber]="escalated()"></span>
+      @if (escalated()) {
+        Escalated to operations
+      } @else {
+        Rescue desk · AI replies instantly
+      }
     </span>
 
     <a routerLink="/customer" class="btn btn-ghost btn-sm desk__back">
@@ -20,8 +24,8 @@
       <span class="context__icon"><app-icon name="headset" [size]="22" /></span>
       <h1>Chat with the rescue desk</h1>
       <p>
-        This is a direct line to the MotoRescue operations team. An admin sees your
-        request details and replies right here.
+        Our assistant answers instantly using your live rescue details. If it cannot sort
+        the issue, escalate and an operations admin joins this same chat.
       </p>
 
       <dl class="context__list">
@@ -49,24 +53,59 @@
             <dd class="status">{{ requestStatus() }}</dd>
           </div>
         }
+        <div>
+          <dt>Handled by</dt>
+          <dd [class.status--admin]="escalated()">
+            {{ escalated() ? 'Operations admin' : 'AI assistant' }}
+          </dd>
+        </div>
       </dl>
 
+      @if (escalated()) {
+        <div class="escalated-note">
+          <app-icon name="shield" [size]="15" />
+          <div>
+            <strong>Escalated to operations</strong>
+            <span>{{ thread()?.escalationReason || 'Issue not sorted' }}</span>
+          </div>
+        </div>
+      } @else {
+        <div class="assistant-note">
+          <app-icon name="sparkles" [size]="15" />
+          <div>
+            <strong>AI assistant</strong>
+            <span>Answers about ETA, price and status instantly.</span>
+          </div>
+        </div>
+      }
+
       <p class="context__note">
-        <app-icon name="shield" [size]="14" />
-        Only you and the operations team can read this conversation.
+        <app-icon name="lock" [size]="14" />
+        Only you, the assistant and the operations team can read this conversation.
       </p>
     </section>
 
     <section class="chat">
       <header class="chat__head">
         <div class="chat__who">
-          <span class="avatar avatar--brand">OP</span>
+          <span class="avatar" [class.avatar--brand]="!escalated()" [class.avatar--amber]="escalated()">
+            {{ escalated() ? 'OP' : 'AI' }}
+          </span>
           <div>
-            <strong>MotoRescue operations</strong>
-            <span><span class="dot"></span> Online now</span>
+            <strong>{{ escalated() ? 'MotoRescue operations' : 'Rescue desk assistant' }}</strong>
+            @if (escalated()) {
+              <span><span class="dot dot--amber"></span> Admin joined this chat</span>
+            } @else {
+              <span><span class="dot"></span> AI · replies instantly</span>
+            }
           </div>
         </div>
-        <span class="badge badge--green">{{ messages().length }} messages</span>
+
+        @if (escalated()) {
+          <span class="badge badge--amber">Escalated</span>
+        } @else {
+          <span class="badge badge--green">{{ messages().length }} messages</span>
+        }
       </header>
 
       <div class="chat__messages" #messagesEl>
@@ -79,18 +118,19 @@
           <div class="chat__empty">
             <span class="chat__empty-icon"><app-icon name="message" [size]="24" /></span>
             <h2>No messages yet</h2>
-            <p>Tell the team what you need. Include your request ID if you have one.</p>
+            <p>Tell the assistant what you need. It can see your request details.</p>
           </div>
         } @else {
           @for (message of messages(); track message.id) {
-            <article class="msg" [class.msg--mine]="message.senderRole === 'CUSTOMER'">
-              <span class="msg__avatar">
-                {{ message.senderRole === 'CUSTOMER' ? 'ME' : 'OP' }}
-              </span>
+            <article
+              class="msg"
+              [class.msg--mine]="message.senderRole === 'CUSTOMER'"
+              [class.msg--ai]="message.senderRole === 'AI'"
+              [class.msg--admin]="message.senderRole === 'ADMIN'"
+            >
+              <span class="msg__avatar">{{ roleInitials(message) }}</span>
               <div class="msg__bubble">
-                <span class="msg__author">
-                  {{ message.senderRole === 'CUSTOMER' ? 'You' : (message.senderName || 'Operations') }}
-                </span>
+                <span class="msg__author">{{ roleLabel(message) }}</span>
                 <p>{{ message.body }}</p>
                 <time>{{ timeOf(message.createdAt) }}</time>
               </div>
@@ -107,6 +147,55 @@
             </button>
           }
         </div>
+
+        <div class="chat__tabs">
+          <button
+            type="button"
+            class="chat__tab"
+            [class.chat__tab--active]="!helpOpen()"
+            (click)="helpOpen.set(false)"
+          >
+            <app-icon name="sparkles" [size]="14" />
+            AI assistant
+          </button>
+          <button
+            type="button"
+            class="chat__tab"
+            [class.chat__tab--active]="helpOpen()"
+            [class.chat__tab--disabled]="escalated()"
+            [disabled]="escalated()"
+            (click)="helpOpen.set(true)"
+          >
+            <app-icon name="alert" [size]="14" />
+            Need more help
+          </button>
+          @if (escalated()) {
+            <span class="chat__tab-note">An admin is handling this chat</span>
+          }
+        </div>
+
+        @if (helpOpen() && !escalated()) {
+          <div class="escalate-panel">
+            <div class="escalate-panel__head">
+              <strong>Still not sorted?</strong>
+              <span>Pick the closest reason and an admin will join this chat.</span>
+            </div>
+            <div class="escalate-panel__options">
+              @for (option of escalationOptions; track option.label) {
+                <button
+                  type="button"
+                  class="escalate-option"
+                  [disabled]="escalating()"
+                  (click)="escalate(option.label)"
+                >
+                  <app-icon [name]="option.icon" [size]="16" />
+                  {{ option.label }}
+                  <app-icon name="arrow-right" [size]="14" />
+                </button>
+              }
+            </div>
+          </div>
+        }
       }
 
       <form class="chat__composer" [formGroup]="form" (ngSubmit)="send()">
@@ -114,7 +203,11 @@
           class="chat__input"
           formControlName="body"
           rows="2"
-          placeholder="Write your message to the rescue desk…"
+          [placeholder]="
+            escalated()
+              ? 'Write to the operations admin…'
+              : 'Ask the assistant about your rescue…'
+          "
           (keydown)="onKeydown($event)"
         ></textarea>
         <button type="submit" class="btn btn-primary" [disabled]="sending() || loading()">
@@ -122,7 +215,9 @@
           <app-icon name="arrow-right" [size]="15" />
         </button>
       </form>
-      <span class="chat__hint">Press Enter to send · Shift + Enter for a new line</span>
+      <span class="chat__hint">
+        Press Enter to send · Shift + Enter for a new line · AI answers first, admins step in when escalated
+      </span>
     </section>
   </main>
 </div>

@@ -97,6 +97,11 @@ export class AdminDashboard {
     this.supportThreads().reduce((total, thread) => total + (thread.adminUnread ?? 0), 0),
   );
 
+  /** Escalated conversations need an admin even after the unread count is cleared. */
+  readonly supportAttention = computed(
+    () => this.supportThreads().filter((thread) => thread.escalated || thread.adminUnread > 0).length,
+  );
+
   readonly navItems = computed<NavItem[]>(() => {
     const active = this.stats()?.activeRequests ?? 0;
     return [
@@ -112,7 +117,7 @@ export class AdminDashboard {
         key: 'support',
         label: 'Support inbox',
         icon: 'headset',
-        badge: this.supportUnread() > 0 ? String(this.supportUnread()) : undefined,
+        badge: this.supportAttention() > 0 ? String(this.supportAttention()) : undefined,
       },
       { key: 'settings', label: 'Settings', icon: 'settings' },
     ];
@@ -511,6 +516,22 @@ export class AdminDashboard {
 
   onReplyInput(event: Event): void {
     this.replyText.set((event.target as HTMLTextAreaElement).value);
+  }
+
+  resolveThread(): void {
+    const thread = this.activeThread();
+    if (!thread || !thread.escalated) {
+      return;
+    }
+
+    this.api.resolveSupportThread(thread.id).subscribe({
+      next: (updated) => {
+        this.replaceThread(updated);
+        this.loadThreadMessages(thread.id);
+        this.toasts.show('Conversation handed back to the AI assistant.', 'success');
+      },
+      error: () => this.toasts.show('Could not resolve this conversation.', 'error'),
+    });
   }
 
   private loadThreadMessages(threadId: number): void {

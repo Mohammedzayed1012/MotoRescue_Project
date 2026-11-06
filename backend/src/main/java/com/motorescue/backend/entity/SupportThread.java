@@ -22,6 +22,7 @@ public class SupportThread {
 
     public static final String ROLE_CUSTOMER = "CUSTOMER";
     public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_AI = "AI";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +60,14 @@ public class SupportThread {
     private Integer adminUnread = 0;
 
     private Integer riderUnread = 0;
+
+    /** True once the rider asks for a human because the assistant could not sort it. */
+    private Boolean escalated = false;
+
+    @Column(length = 200)
+    private String escalationReason;
+
+    private LocalDateTime escalatedAt;
 
     private LocalDateTime createdAt;
 
@@ -159,6 +168,30 @@ public class SupportThread {
         this.riderUnread = riderUnread;
     }
 
+    public boolean isEscalated() {
+        return escalated != null && escalated;
+    }
+
+    public void setEscalated(Boolean escalated) {
+        this.escalated = escalated;
+    }
+
+    public String getEscalationReason() {
+        return escalationReason;
+    }
+
+    public void setEscalationReason(String escalationReason) {
+        this.escalationReason = escalationReason;
+    }
+
+    public LocalDateTime getEscalatedAt() {
+        return escalatedAt;
+    }
+
+    public void setEscalatedAt(LocalDateTime escalatedAt) {
+        this.escalatedAt = escalatedAt;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -177,6 +210,9 @@ public class SupportThread {
         }
         if (riderUnread == null) {
             riderUnread = 0;
+        }
+        if (escalated == null) {
+            escalated = false;
         }
     }
 

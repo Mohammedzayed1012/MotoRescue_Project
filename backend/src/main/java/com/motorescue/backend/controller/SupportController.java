@@ -113,6 +113,29 @@ public class SupportController {
         }
     }
 
+    /** Rider asks for a human because the assistant could not sort the issue. */
+    @PostMapping("/threads/{id}/escalate")
+    public ResponseEntity<?> escalate(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        try {
+            String reason = body == null ? null : asText(body.get("reason"));
+            String riderName = body == null ? null : asText(body.get("riderName"));
+            return ResponseEntity.ok(supportService.escalate(id, reason, riderName));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** Admin closes an escalated conversation and hands it back to the assistant. */
+    @PostMapping("/threads/{id}/resolve")
+    public ResponseEntity<?> resolve(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(supportService.resolve(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     private Long asLong(Object value) {
         if (value instanceof Number number) {
             return number.longValue();

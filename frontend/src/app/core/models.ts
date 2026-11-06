@@ -145,7 +145,7 @@ export interface ApiRescueRequest {
   cancelledAt?: string;
 }
 
-export type SupportSenderRole = 'CUSTOMER' | 'ADMIN';
+export type SupportSenderRole = 'CUSTOMER' | 'ADMIN' | 'AI';
 
 export interface SupportThread {
   id: number;
@@ -160,6 +160,9 @@ export interface SupportThread {
   lastSenderRole?: SupportSenderRole;
   adminUnread: number;
   riderUnread: number;
+  escalated: boolean;
+  escalationReason?: string;
+  escalatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -371,7 +371,7 @@
           <header class="card-head">
             <div>
               <h2>Rider conversations</h2>
-              <p>{{ supportThreads().length }} threads · {{ supportUnread() }} unread</p>
+              <p>{{ supportThreads().length }} threads · {{ supportAttention() }} need attention</p>
             </div>
           </header>
 
@@ -384,7 +384,9 @@
                   [class.support-row--active]="activeThread()?.id === thread.id"
                   (click)="openThread(thread)"
                 >
-                  <span class="avatar avatar--brand">{{ initialsOf(thread.riderName) || 'RD' }}</span>
+                  <span class="avatar" [class.avatar--brand]="!thread.escalated" [class.avatar--amber]="thread.escalated">
+                    {{ initialsOf(thread.riderName) || 'RD' }}
+                  </span>
                   <span class="support-row__copy">
                     <strong>{{ thread.riderName || 'Rider' }}</strong>
                     <small>{{ thread.issue || 'General enquiry' }}</small>
@@ -394,8 +396,16 @@
                       }
                       Rider #{{ thread.riderId }}
                     </small>
+                    @if (thread.escalated) {
+                      <small class="support-row__reason">
+                        Escalated · {{ thread.escalationReason || 'Issue not sorted' }}
+                      </small>
+                    }
                   </span>
                   <span class="support-row__meta">
+                    @if (thread.escalated) {
+                      <span class="badge badge--amber">Escalated</span>
+                    }
                     @if (thread.adminUnread > 0) {
                       <span class="badge badge--brand">{{ thread.adminUnread }}</span>
                     }
@@ -438,6 +448,16 @@
                   <span class="context-chip context-chip--status">{{ thread.requestStatus }}</span>
                 }
               </div>
+
+              @if (thread.escalated) {
+                <div class="support-chat__escalated">
+                  <span class="badge badge--amber">Escalated to you</span>
+                  <span class="support-chat__reason">{{ thread.escalationReason || 'Issue not sorted' }}</span>
+                  <button type="button" class="btn btn-light btn-sm" (click)="resolveThread()">
+                    Mark resolved
+                  </button>
+                </div>
+              }
             </header>
 
             <div class="support-chat__messages">
@@ -453,13 +473,29 @@
                 </div>
               } @else {
                 @for (message of threadMessages(); track message.id) {
-                  <article class="thread-msg" [class.thread-msg--admin]="message.senderRole === 'ADMIN'">
+                  <article
+                    class="thread-msg"
+                    [class.thread-msg--admin]="message.senderRole === 'ADMIN'"
+                    [class.thread-msg--ai]="message.senderRole === 'AI'"
+                  >
                     <span class="thread-msg__avatar">
-                      {{ message.senderRole === 'ADMIN' ? 'OP' : (initialsOf(message.senderName) || 'RD') }}
+                      @if (message.senderRole === 'ADMIN') {
+                        OP
+                      } @else if (message.senderRole === 'AI') {
+                        AI
+                      } @else {
+                        {{ initialsOf(message.senderName) || 'RD' }}
+                      }
                     </span>
                     <div class="thread-msg__bubble">
                       <span class="thread-msg__author">
-                        {{ message.senderRole === 'ADMIN' ? 'Operations' : (message.senderName || 'Rider') }}
+                        @if (message.senderRole === 'ADMIN') {
+                          Operations admin
+                        } @else if (message.senderRole === 'AI') {
+                          AI assistant
+                        } @else {
+                          {{ message.senderName || 'Rider' }}
+                        }
                       </span>
                       <p>{{ message.body }}</p>
                       <time>{{ timeOf(message.createdAt) }}</time>
