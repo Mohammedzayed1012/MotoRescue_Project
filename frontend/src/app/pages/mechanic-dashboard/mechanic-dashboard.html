@@ -87,6 +87,14 @@
 
                 <div class="incoming__grid">
                   <div><span>Customer</span><strong>{{ job.riderName }}</strong></div>
+                  <div>
+                    <span>Customer phone</span>
+                    @if (job.riderPhone) {
+                      <strong><a class="phone-link" [href]="'tel:' + job.riderPhone">{{ job.riderPhone }}</a></strong>
+                    } @else {
+                      <strong>Not provided</strong>
+                    }
+                  </div>
                   <div><span>Distance</span><strong>{{ job.distance }} · ~{{ job.etaMinutes }} min</strong></div>
                   <div><span>Request</span><strong>{{ job.reference }}</strong></div>
                 </div>
@@ -155,6 +163,12 @@
                 <div>
                   <strong>{{ job.riderName }}</strong>
                   <span>{{ job.location }} · {{ job.notes || 'Rider is waiting for you.' }}</span>
+                  @if (job.riderPhone) {
+                    <a class="active-job__phone" [href]="'tel:' + job.riderPhone">
+                      <app-icon name="phone" [size]="12" />
+                      {{ job.riderPhone }}
+                    </a>
+                  }
                 </div>
                 <div class="active-job__contact">
                   <a class="icon-btn icon-btn--brand" [href]="'tel:' + (job.riderPhone || '+918000000000')" aria-label="Call the rider">
@@ -173,7 +187,10 @@
               </div>
 
               <div class="active-job__actions">
-                <a class="btn btn-ghost btn-sm" [href]="'tel:' + (job.riderPhone || '+918000000000')">Call rider</a>
+                <a class="btn btn-ghost btn-sm" [href]="'tel:' + (job.riderPhone || '+918000000000')">
+                  <app-icon name="phone" [size]="15" />
+                  {{ job.riderPhone ? 'Call ' + job.riderPhone : 'Call rider' }}
+                </a>
                 <button type="button" class="btn btn-primary" (click)="advanceJob()">
                   @if (job.status === 'EN_ROUTE') {
                     <app-icon name="pin" [size]="16" />

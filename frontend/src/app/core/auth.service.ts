@@ -14,7 +14,7 @@ const STORAGE_KEY = 'motorescue.session';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiUrl = 'http://localhost:8080/api/auth';
+  private readonly apiUrl = '/api/auth';
 
   readonly user = signal<AuthUser | null>(this.restoreSession());
   readonly isAuthenticated = computed(() => this.user() !== null);

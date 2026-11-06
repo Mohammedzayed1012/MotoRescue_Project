@@ -63,6 +63,14 @@
                   <div class="mechanic-row__info">
                     <strong>{{ active.mechanicName }}</strong>
                     <span>{{ active.distance }} away · Verified rescue partner</span>
+                    @if (active.mechanicPhone) {
+                      <a class="mechanic-row__phone" [href]="'tel:' + active.mechanicPhone">
+                        <app-icon name="phone" [size]="13" />
+                        {{ active.mechanicPhone }}
+                      </a>
+                    } @else {
+                      <span>Phone number available once assigned</span>
+                    }
                     <span class="verified-tag">
                       <app-icon name="shield" [size]="12" />
                       Verified partner
@@ -133,7 +141,7 @@
                   @if (active.mechanicPhone) {
                     <a class="btn btn-primary btn-sm" [href]="'tel:' + active.mechanicPhone">
                       <app-icon name="phone" [size]="15" />
-                      Call mechanic
+                      Call {{ active.mechanicPhone }}
                     </a>
                   }
                 </div>

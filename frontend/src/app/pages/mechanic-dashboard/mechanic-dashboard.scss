@@ -229,6 +229,16 @@
   font-size: 0.8rem;
 }
 
+.phone-link {
+  color: var(--brand-strong);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.phone-link:hover {
+  text-decoration: underline;
+}
+
 .incoming__note {
   display: flex;
   align-items: flex-start;
@@ -458,6 +468,21 @@
   font-size: 0.7rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.active-job__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--brand-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.active-job__phone:hover {
+  text-decoration: underline;
 }
 
 .active-job__contact {

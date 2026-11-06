@@ -139,6 +139,22 @@
   font-size: 0.73rem;
 }
 
+.mechanic-row__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  color: var(--brand-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+
+.mechanic-row__phone:hover {
+  text-decoration: underline;
+}
+
 .verified-tag {
   display: inline-flex;
   align-items: center;
