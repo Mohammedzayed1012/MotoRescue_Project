@@ -7,8 +7,10 @@ import {
   ApiUser,
   Bike,
   CreateRequestPayload,
+  CreateReviewPayload,
   OpenSupportThreadPayload,
   PlatformStats,
+  Review,
   SupportMessage,
   SupportSenderRole,
   SupportThread,
@@ -80,6 +82,20 @@ export class ApiService {
     return this.http.post<ApiRescueRequest>(`${this.base}/requests/${id}/assign`, {
       mechanicId: mechanicId ?? null,
     });
+  }
+
+  /* Reviews ----------------------------------------------------------- */
+
+  createReview(payload: CreateReviewPayload): Observable<Review> {
+    return this.http.post<Review>(`${this.base}/reviews`, payload);
+  }
+
+  riderReviews(riderId: number): Observable<Review[]> {
+    return this.http.get<Review[]>(`${this.base}/reviews/rider/${riderId}`);
+  }
+
+  mechanicReviews(mechanicId: number): Observable<Review[]> {
+    return this.http.get<Review[]>(`${this.base}/reviews/mechanic/${mechanicId}`);
   }
 
   mechanics(): Observable<ApiUser[]> {

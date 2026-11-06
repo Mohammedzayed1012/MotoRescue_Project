@@ -1159,3 +1159,88 @@
     font-size: 0.62rem;
   }
 }
+
+/* Rider reviews ------------------------------------------------------------- */
+
+.review-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-feed li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.review-feed li:first-child {
+  padding-top: 4px;
+}
+
+.review-feed li:last-child {
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+.review-feed__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.review-feed__who {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.review-feed__who strong {
+  font-size: 0.82rem;
+  color: var(--ink-900);
+}
+
+.review-feed__who span {
+  font-size: 0.68rem;
+  color: var(--slate-500);
+}
+
+.review-feed__score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.review-feed__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 0 44px;
+}
+
+.review-feed__tags span {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--slate-100);
+  color: var(--slate-600);
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.review-feed__comment {
+  margin: 8px 0 0 44px;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--slate-600);
+  font-style: italic;
+}

@@ -14,7 +14,7 @@ import { AuthService } from '../../core/auth.service';
 import { ApiService } from '../../core/api.service';
 import { BookingService } from '../../core/booking.service';
 import { ToastService } from '../../core/toast.service';
-import { ApiRescueRequest, ApiUser, Bike, RequestStatus } from '../../core/models';
+import { ApiRescueRequest, ApiUser, Bike, RequestStatus, Review } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon, IconName } from '../../shared/icon/icon';
 import { TrackingMap } from '../../shared/tracking-map/tracking-map';
@@ -29,12 +29,15 @@ interface ServiceOption {
 
 interface HistoryRow {
   id: string;
+  requestId: number;
   date: string;
   service: string;
   mechanic: string;
   bike: string;
   amount: string;
   status: 'Completed' | 'Cancelled';
+  rating: number | null;
+  canReview: boolean;
 }
 
 const ACTIVE_STATUSES: RequestStatus[] = ['SEARCHING', 'EN_ROUTE', 'ARRIVED'];
@@ -74,6 +77,16 @@ export class CustomerDashboard {
   readonly locating = signal(false);
   readonly liveLocation = signal(false);
 
+  /* Reviews ------------------------------------------------------------ */
+  readonly reviews = signal<Review[]>([]);
+  readonly reviewTarget = signal<ApiRescueRequest | null>(null);
+  readonly reviewSubmitting = signal(false);
+  readonly serviceRating = signal(0);
+  readonly behaviourRating = signal(0);
+  readonly reviewComment = signal('');
+  readonly reviewPromptDismissed = signal<number | null>(null);
+  readonly starOptions = [1, 2, 3, 4, 5];
+
   private readonly liveLat = signal<number | null>(null);
   private readonly liveLng = signal<number | null>(null);
 
@@ -90,19 +103,44 @@ export class CustomerDashboard {
     () => this.requests().find((item) => ACTIVE_STATUSES.includes(item.status)) ?? null,
   );
 
+  readonly reviewsByRequest = computed(
+    () => new Map(this.reviews().map((review) => [review.requestId, review])),
+  );
+
   readonly history = computed<HistoryRow[]>(() =>
     this.requests()
       .filter((item) => item.status === 'COMPLETED' || item.status === 'CANCELLED')
-      .map((item) => ({
-        id: item.reference,
-        date: this.formatDate(item.completedAt ?? item.cancelledAt ?? item.createdAt),
-        service: item.serviceLabel ?? 'Roadside assistance',
-        mechanic: item.mechanicName ?? '—',
-        bike: item.bikeLabel ?? '—',
-        amount: item.quote ?? '—',
-        status: item.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
-      })),
+      .map((item) => {
+        const review = this.reviewsByRequest().get(item.id) ?? null;
+        return {
+          id: item.reference,
+          requestId: item.id,
+          date: this.formatDate(item.completedAt ?? item.cancelledAt ?? item.createdAt),
+          service: item.serviceLabel ?? 'Roadside assistance',
+          mechanic: item.mechanicName ?? '—',
+          bike: item.bikeLabel ?? '—',
+          amount: item.quote ?? '—',
+          status: item.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
+          rating: review?.rating ?? null,
+          canReview: item.status === 'COMPLETED' && !!item.mechanicId && !review,
+        };
+      }),
   );
+
+  /** The most recent completed rescue that still needs a review. */
+  readonly pendingReview = computed<ApiRescueRequest | null>(() => {
+    const dismissed = this.reviewPromptDismissed();
+
+    return (
+      this.requests().find(
+        (item) =>
+          item.status === 'COMPLETED' &&
+          !!item.mechanicId &&
+          !this.reviewsByRequest().has(item.id) &&
+          item.id !== dismissed,
+      ) ?? null
+    );
+  });
 
   readonly recentHistory = computed(() => this.history().slice(0, 3));
   readonly primaryBike = computed(
@@ -315,6 +353,86 @@ export class CustomerDashboard {
     });
   }
 
+  openReview(request?: ApiRescueRequest | null): void {
+    const target = request ?? this.pendingReview();
+    if (!target) return;
+
+    this.reviewTarget.set(target);
+    this.serviceRating.set(0);
+    this.behaviourRating.set(0);
+    this.reviewComment.set('');
+  }
+
+  openReviewForHistory(entry: HistoryRow): void {
+    const request = this.requests().find((item) => item.id === entry.requestId) ?? null;
+    if (request) {
+      this.openReview(request);
+    }
+  }
+
+  dismissReviewPrompt(requestId: number): void {
+    this.reviewPromptDismissed.set(requestId);
+  }
+
+  closeReview(): void {
+    if (this.reviewSubmitting()) return;
+    this.reviewTarget.set(null);
+  }
+
+  setServiceRating(value: number): void {
+    this.serviceRating.set(value);
+  }
+
+  setBehaviourRating(value: number): void {
+    this.behaviourRating.set(value);
+  }
+
+  onReviewComment(event: Event): void {
+    this.reviewComment.set((event.target as HTMLTextAreaElement).value);
+  }
+
+  submitReview(): void {
+    const target = this.reviewTarget();
+    const riderId = this.auth.user()?.id;
+    if (!target || !riderId || this.reviewSubmitting()) return;
+
+    if (this.serviceRating() < 1 || this.behaviourRating() < 1) {
+      this.toasts.show('Choose a star rating for the service and your mechanic.', 'info');
+      return;
+    }
+
+    this.reviewSubmitting.set(true);
+    this.api
+      .createReview({
+        requestId: target.id,
+        riderId,
+        serviceRating: this.serviceRating(),
+        behaviourRating: this.behaviourRating(),
+        comment: this.reviewComment().trim(),
+      })
+      .subscribe({
+        next: (review) => {
+          this.reviewSubmitting.set(false);
+          this.reviews.update((list) => [review, ...list]);
+          this.reviewTarget.set(null);
+          this.reviewPromptDismissed.set(null);
+          this.toasts.show('Thanks for the review. Your rating helps other riders.', 'success');
+        },
+        error: (error: unknown) => {
+          this.reviewSubmitting.set(false);
+          this.toasts.show(this.errorMessage(error, 'Could not save your review.'), 'error');
+        },
+      });
+  }
+
+  ratingWord(value: number): string {
+    return ['Tap to rate', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][value] ?? 'Tap to rate';
+  }
+
+  reviewFor(requestId: number): Review | null {
+    return this.reviewsByRequest().get(requestId) ?? null;
+  }
+
   callSupport(): void {
     this.router.navigate(['/support']);
   }
@@ -499,6 +617,7 @@ export class CustomerDashboard {
     this.loadRequests();
     this.loadBikes();
     this.loadMechanics();
+    this.loadReviews();
   }
 
   private loadRequests(): void {
@@ -525,7 +644,10 @@ export class CustomerDashboard {
           } else if (after.status === 'ARRIVED') {
             this.toasts.show('Your mechanic has arrived at your location.', 'success');
           } else if (after.status === 'COMPLETED') {
-            this.toasts.show('Rescue completed. Your receipt is in rescue history.', 'success');
+            this.toasts.show(
+              'Rescue completed. Please rate the service and your mechanic.',
+              'success',
+            );
           }
         }
 
@@ -538,6 +660,18 @@ export class CustomerDashboard {
       },
       error: () => {
         this.loading.set(false);
+      },
+    });
+  }
+
+  private loadReviews(): void {
+    const riderId = this.auth.user()?.id;
+    if (!riderId) return;
+
+    this.api.riderReviews(riderId).subscribe({
+      next: (reviews) => this.reviews.set(reviews),
+      error: () => {
+        // Reviews are optional; the dashboard still works if they fail to load.
       },
     });
   }

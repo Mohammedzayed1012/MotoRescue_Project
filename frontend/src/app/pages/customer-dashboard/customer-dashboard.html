@@ -18,6 +18,29 @@
     @case ('overview') {
       <div class="dash-grid">
         <div class="dash-main">
+          @if (pendingReview(); as pending) {
+            <section class="card review-prompt">
+              <span class="review-prompt__icon"><app-icon name="star-filled" [size]="24" /></span>
+              <div class="review-prompt__copy">
+                <span class="badge badge--green"><span class="dot"></span>Job completed</span>
+                <h3>How was your rescue?</h3>
+                <p>
+                  {{ pending.serviceLabel }} · {{ pending.mechanicName }} completed request
+                  {{ pending.reference }}. Rate the service and your mechanic's behaviour.
+                </p>
+              </div>
+              <div class="review-prompt__actions">
+                <button type="button" class="btn btn-primary btn-sm" (click)="openReview(pending)">
+                  <app-icon name="star" [size]="15" />
+                  Rate now
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="dismissReviewPrompt(pending.id)">
+                  Later
+                </button>
+              </div>
+            </section>
+          }
+
           @if (request(); as active) {
             <section class="card rescue-card">
               <div class="rescue-card__head">
@@ -215,6 +238,7 @@
                       <th>Service</th>
                       <th>Mechanic</th>
                       <th>Amount</th>
+                      <th>Rating</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -225,6 +249,29 @@
                         <td><strong>{{ entry.service }}</strong></td>
                         <td>{{ entry.mechanic }}</td>
                         <td>{{ entry.amount }}</td>
+                        <td>
+                          @if (entry.rating) {
+                            <span class="stars-inline" [title]="entry.rating + ' out of 5'">
+                              @for (star of starOptions; track star) {
+                                <app-icon
+                                  [name]="star <= (entry.rating ?? 0) ? 'star-filled' : 'star'"
+                                  [size]="13"
+                                />
+                              }
+                              <strong>{{ entry.rating }}</strong>
+                            </span>
+                          } @else if (entry.canReview) {
+                            <button
+                              type="button"
+                              class="btn btn-soft btn-sm"
+                              (click)="openReviewForHistory(entry)"
+                            >
+                              Rate
+                            </button>
+                          } @else {
+                            <span class="muted">—</span>
+                          }
+                        </td>
                         <td>
                           <span
                             class="badge"
@@ -604,6 +651,7 @@
                   <th>Mechanic</th>
                   <th>Bike</th>
                   <th>Amount</th>
+                  <th>Rating</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -616,6 +664,29 @@
                     <td>{{ entry.mechanic }}</td>
                     <td>{{ entry.bike }}</td>
                     <td>{{ entry.amount }}</td>
+                    <td>
+                      @if (entry.rating) {
+                        <span class="stars-inline" [title]="entry.rating + ' out of 5'">
+                          @for (star of starOptions; track star) {
+                            <app-icon
+                              [name]="star <= (entry.rating ?? 0) ? 'star-filled' : 'star'"
+                              [size]="13"
+                            />
+                          }
+                          <strong>{{ entry.rating }}</strong>
+                        </span>
+                      } @else if (entry.canReview) {
+                        <button
+                          type="button"
+                          class="btn btn-soft btn-sm"
+                          (click)="openReviewForHistory(entry)"
+                        >
+                          Rate service
+                        </button>
+                      } @else {
+                        <span class="muted">—</span>
+                      }
+                    </td>
                     <td>
                       <span
                         class="badge"
@@ -741,5 +812,99 @@
         </aside>
       </div>
     }
+  }
+
+  @if (reviewTarget(); as target) {
+    <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+      <div class="review-modal__backdrop" (click)="closeReview()"></div>
+      <section class="review-modal__card">
+        <header class="review-modal__head">
+          <div>
+            <span class="badge badge--green"><span class="dot"></span>Completed</span>
+            <h2 id="reviewTitle">How was your rescue?</h2>
+            <p>{{ target.serviceLabel }} · {{ target.mechanicName }} · {{ target.reference }}</p>
+          </div>
+          <button type="button" class="icon-btn" (click)="closeReview()" aria-label="Close review">
+            <app-icon name="close" [size]="18" />
+          </button>
+        </header>
+
+        <div class="review-field">
+          <div class="review-field__label">
+            <span>Service quality</span>
+            <small>{{ ratingWord(serviceRating()) }}</small>
+          </div>
+          <div class="review-stars">
+            @for (star of starOptions; track star) {
+              <button
+                type="button"
+                class="review-star"
+                [class.review-star--on]="star <= serviceRating()"
+                [attr.aria-label]="star + ' star service rating'"
+                (click)="setServiceRating(star)"
+              >
+                <app-icon [name]="star <= serviceRating() ? 'star-filled' : 'star'" [size]="27" />
+              </button>
+            }
+          </div>
+          <p class="review-field__hint">How well was the repair or rescue handled?</p>
+        </div>
+
+        <div class="review-field">
+          <div class="review-field__label">
+            <span>Mechanic behaviour</span>
+            <small>{{ ratingWord(behaviourRating()) }}</small>
+          </div>
+          <div class="review-stars">
+            @for (star of starOptions; track star) {
+              <button
+                type="button"
+                class="review-star"
+                [class.review-star--on]="star <= behaviourRating()"
+                [attr.aria-label]="star + ' star mechanic behaviour rating'"
+                (click)="setBehaviourRating(star)"
+              >
+                <app-icon [name]="star <= behaviourRating() ? 'star-filled' : 'star'" [size]="27" />
+              </button>
+            }
+          </div>
+          <p class="review-field__hint">Was the mechanic polite, professional and on time?</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="reviewComment">
+            Anything else? <span class="label__optional">Optional</span>
+          </label>
+          <textarea
+            id="reviewComment"
+            class="textarea"
+            rows="3"
+            [value]="reviewComment()"
+            (input)="onReviewComment($event)"
+            placeholder="Tell other riders what stood out about the service or the mechanic."
+          ></textarea>
+        </div>
+
+        <footer class="review-modal__foot">
+          <span class="review-modal__note">
+            <app-icon name="lock" [size]="13" />
+            Your review is shared with the mechanic and the rescue desk.
+          </span>
+          <div class="review-modal__actions">
+            <button type="button" class="btn btn-ghost btn-sm" (click)="closeReview()">
+              Not now
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="serviceRating() === 0 || behaviourRating() === 0 || reviewSubmitting()"
+              (click)="submitReview()"
+            >
+              {{ reviewSubmitting() ? 'Submitting…' : 'Submit review' }}
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
   }
 </app-dashboard-shell>

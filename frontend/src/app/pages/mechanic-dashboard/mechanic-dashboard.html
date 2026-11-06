@@ -228,6 +228,58 @@
           <section class="card">
             <div class="card-head">
               <div>
+                <h3>Recent rider reviews</h3>
+                <p class="card-head__sub">What riders said about your service and behaviour</p>
+              </div>
+              @if (reviews().length) {
+                <span class="badge badge--green">
+                  <app-icon name="star-filled" [size]="12" />
+                  {{ averageReview() }} · {{ reviews().length }} reviews
+                </span>
+              } @else {
+                <span class="badge badge--neutral">No reviews yet</span>
+              }
+            </div>
+
+            @if (recentReviews().length) {
+              <ul class="review-feed">
+                @for (review of recentReviews(); track review.id) {
+                  <li>
+                    <div class="review-feed__head">
+                      <span class="avatar avatar--sm avatar--brand">
+                        {{ initialsFor(review.riderName) }}
+                      </span>
+                      <div class="review-feed__who">
+                        <strong>{{ review.riderName || 'Rider' }}</strong>
+                        <span>{{ review.requestReference }} · {{ reviewDate(review.createdAt) }}</span>
+                      </div>
+                      <span class="review-feed__score">
+                        <app-icon name="star-filled" [size]="13" />
+                        {{ review.rating }}
+                      </span>
+                    </div>
+                    <div class="review-feed__tags">
+                      <span>Service {{ review.serviceRating }}/5</span>
+                      <span>Behaviour {{ review.behaviourRating }}/5</span>
+                    </div>
+                    @if (review.comment) {
+                      <p class="review-feed__comment">“{{ review.comment }}”</p>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <div class="empty-state">
+                <app-icon name="star" [size]="24" />
+                <h3>No reviews yet</h3>
+                <p>Complete a rescue and your rider can rate your service and behaviour here.</p>
+              </div>
+            }
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
                 <h3>Recent jobs</h3>
                 <p class="card-head__sub">Your last three completed rescues</p>
               </div>

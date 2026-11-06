@@ -145,6 +145,29 @@ export interface ApiRescueRequest {
   cancelledAt?: string;
 }
 
+export interface Review {
+  id: number;
+  requestId: number;
+  requestReference?: string;
+  riderId: number;
+  riderName?: string;
+  mechanicId?: number;
+  mechanicName?: string;
+  serviceRating: number;
+  behaviourRating: number;
+  rating: number;
+  comment?: string;
+  createdAt?: string;
+}
+
+export interface CreateReviewPayload {
+  requestId: number;
+  riderId: number;
+  serviceRating: number;
+  behaviourRating: number;
+  comment?: string;
+}
+
 export type SupportSenderRole = 'CUSTOMER' | 'ADMIN' | 'AI';
 
 export interface SupportThread {

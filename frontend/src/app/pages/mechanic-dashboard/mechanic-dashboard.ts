@@ -13,7 +13,7 @@ import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
-import { ApiRescueRequest } from '../../core/models';
+import { ApiRescueRequest, Review } from '../../core/models';
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon } from '../../shared/icon/icon';
 
@@ -53,6 +53,20 @@ export class MechanicDashboard {
   readonly online = signal(this.auth.user()?.online ?? false);
   readonly openJobs = signal<ApiRescueRequest[]>([]);
   readonly myJobs = signal<ApiRescueRequest[]>([]);
+
+  readonly reviews = signal<Review[]>([]);
+  readonly starOptions = [1, 2, 3, 4, 5];
+
+  readonly recentReviews = computed(() => this.reviews().slice(0, 3));
+
+  readonly averageReview = computed(() => {
+    const list = this.reviews();
+    if (!list.length) {
+      return this.auth.user()?.rating ?? 0;
+    }
+    const average = list.reduce((total, review) => total + review.rating, 0) / list.length;
+    return Math.round(average * 10) / 10;
+  });
 
   readonly active = computed(
     () =>
@@ -240,6 +254,7 @@ export class MechanicDashboard {
 
   constructor() {
     this.loadJobs();
+    this.loadReviews();
     this.profileForm.controls.radius.setValue('12 km');
 
     interval(3000)
@@ -400,6 +415,18 @@ export class MechanicDashboard {
       .join('');
   }
 
+  private loadReviews(): void {
+    const mechanicId = this.auth.user()?.id;
+    if (!mechanicId) return;
+
+    this.api.mechanicReviews(mechanicId).subscribe({
+      next: (reviews) => this.reviews.set(reviews),
+      error: () => {
+        // Reviews are optional; the dashboard still works without them.
+      },
+    });
+  }
+
   private loadJobs(): void {
     const mechanicId = this.auth.user()?.id;
     if (!mechanicId) return;
@@ -433,6 +460,10 @@ export class MechanicDashboard {
       month: 'short',
       year: 'numeric',
     }).format(date);
+  }
+
+  reviewDate(value?: string): string {
+    return this.formatDate(value);
   }
 
   private errorMessage(error: unknown, fallback: string): string {
