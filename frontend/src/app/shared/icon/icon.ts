@@ -28,6 +28,7 @@ export type IconName =
   | 'logout'
   | 'mail'
   | 'map'
+  | 'maximize'
   | 'menu'
   | 'message'
   | 'navigation'
@@ -180,6 +181,12 @@ export type IconName =
         @case ('map') {
           <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3Z" />
           <path d="M9 3v15M15 6v15" />
+        }
+        @case ('maximize') {
+          <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+          <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+          <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+          <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
         }
         @case ('menu') {
           <path d="M4 6h16M4 12h16M4 18h16" />

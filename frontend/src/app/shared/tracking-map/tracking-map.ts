@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { Icon } from '../icon/icon';
 import { RequestStatus } from '../../core/models';
 
@@ -6,15 +6,27 @@ import { RequestStatus } from '../../core/models';
   selector: 'app-tracking-map',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icon],
+  host: { '(document:keydown.escape)': 'collapse()' },
   template: `
+    @if (expanded()) {
+      <div class="track-scrim" aria-hidden="true" (click)="collapse()"></div>
+    }
+
     <div
       class="track"
       [class.track--arrived]="status() === 'ARRIVED'"
       [class.track--complete]="status() === 'COMPLETED'"
+      [class.track--expanded]="expanded()"
       role="img"
       [attr.aria-label]="ariaLabel()"
+      (click)="expand()"
     >
-      <svg class="track__map" viewBox="0 0 640 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <svg
+        class="track__map"
+        viewBox="0 0 640 420"
+        [attr.preserveAspectRatio]="expanded() ? 'xMidYMid meet' : 'xMidYMid slice'"
+        aria-hidden="true"
+      >
         <rect class="ground" width="640" height="420" />
 
         <g class="blocks">
@@ -45,14 +57,18 @@ import { RequestStatus } from '../../core/models';
           <path d="M574 0v420" />
         </g>
 
+        @if (status() === 'EN_ROUTE') {
+          <path class="route-line__casing" [attr.d]="roadPath" />
+          <path class="route-line" [attr.d]="roadPath" />
+          <circle class="route-start" cx="574" cy="84" r="5" />
+        }
+
         <g class="labels">
           <text x="322" y="122">ITPL Main Road</text>
           <text x="40" y="242">Whitefield</text>
           <text x="470" y="306">Forum Mall</text>
           <text x="300" y="372">Hope Farm</text>
         </g>
-
-        <path class="route" [attr.d]="routePath" />
 
         <g class="you-pin" transform="translate(150 332)">
           <circle class="you-pulse" r="22" />
@@ -62,26 +78,68 @@ import { RequestStatus } from '../../core/models';
         </g>
 
         @if (status() === 'EN_ROUTE') {
-          <g class="mech-pin">
-            <circle class="mech-halo" r="20" />
-            <circle class="mech-body" r="14" />
-            <path class="mech-icon" d="M-6 -1h3l2-3h3l-1 3h3l2 3h-3l-1 2h-6l-1-2h-4z" />
-            <animateMotion dur="16s" repeatCount="indefinite" [attr.path]="routePath" />
+          <g class="scooter">
+            <g class="scooter__body">
+              <circle class="scooter__bg" r="18" />
+              <g class="scooter__glyph" transform="translate(-12 -13.5)">
+                <circle cx="5" cy="17" r="3" />
+                <circle cx="19" cy="17" r="3" />
+                <path d="M8 17h6" />
+                <path d="M15 17V8h4" />
+                <path d="M19 8h3" />
+                <path d="M3 10h5" />
+              </g>
+              <animateMotion dur="18s" repeatCount="indefinite" rotate="auto" [attr.path]="roadPath" />
+            </g>
+            <g class="scooter__tag">
+              <text class="scooter__label" x="-24" y="5" text-anchor="end">Mechanic</text>
+              <animateMotion dur="18s" repeatCount="indefinite" [attr.path]="roadPath" />
+            </g>
           </g>
         }
 
         @if (status() === 'ARRIVED' || status() === 'COMPLETED') {
-          <g class="mech-pin mech-pin--parked" transform="translate(150 306)">
-            <circle class="mech-body" r="14" />
-            <path class="mech-icon" d="M-6 -1h3l2-3h3l-1 3h3l2 3h-3l-1 2h-6l-1-2h-4z" />
+          <g class="scooter scooter--parked" transform="translate(150 332)">
+            <circle class="scooter__bg" r="18" />
+            <g class="scooter__glyph" transform="translate(-12 -13.5)">
+              <circle cx="5" cy="17" r="3" />
+              <circle cx="19" cy="17" r="3" />
+              <path d="M8 17h6" />
+              <path d="M15 17V8h4" />
+              <path d="M19 8h3" />
+              <path d="M3 10h5" />
+            </g>
+            <text class="scooter__label" x="-24" y="5" text-anchor="end">Mechanic</text>
           </g>
         }
+
 
         @if (status() === 'SEARCHING') {
           <g class="search-ring" transform="translate(540 92)">
             <circle r="16" />
             <circle r="16" />
             <circle class="search-core" r="6" />
+          </g>
+        }
+
+        @if (!status() || status() === 'SEARCHING') {
+          <g class="scooter scooter--nearby">
+            <g class="scooter__body">
+              <circle class="scooter__bg" r="18" />
+              <g class="scooter__glyph" transform="translate(-12 -13.5)">
+                <circle cx="5" cy="17" r="3" />
+                <circle cx="19" cy="17" r="3" />
+                <path d="M8 17h6" />
+                <path d="M15 17V8h4" />
+                <path d="M19 8h3" />
+                <path d="M3 10h5" />
+              </g>
+              <animateMotion dur="22s" repeatCount="indefinite" rotate="auto" [attr.path]="nearbyPath" />
+            </g>
+            <g class="scooter__tag">
+              <text class="scooter__label" x="-24" y="5" text-anchor="end">Nearby mechanic</text>
+              <animateMotion dur="22s" repeatCount="indefinite" [attr.path]="nearbyPath" />
+            </g>
           </g>
         }
       </svg>
@@ -110,7 +168,12 @@ import { RequestStatus } from '../../core/models';
           @if (status() === 'COMPLETED') {
             <span class="track__done"><app-icon name="check" [size]="14" /> Done</span>
           } @else if (status() !== 'SEARCHING') {
-            <a class="track__call" [href]="'tel:' + (phone() || '+918000000000')" aria-label="Call your mechanic">
+            <a
+              class="track__call"
+              [href]="'tel:' + (phone() || '+918000000000')"
+              aria-label="Call your mechanic"
+              (click)="$event.stopPropagation()"
+            >
               <app-icon name="phone" [size]="15" />
             </a>
           }
@@ -121,6 +184,17 @@ import { RequestStatus } from '../../core/models';
         <app-icon name="pin" [size]="13" />
         {{ location() || 'Your live location' }}
       </span>
+
+      <button
+        type="button"
+        class="track__expand"
+        (click)="toggle($event)"
+        [attr.aria-label]="expanded() ? 'Close the large map' : 'Expand the map'"
+        [attr.aria-expanded]="expanded()"
+        [attr.title]="expanded() ? 'Close map' : 'Expand map'"
+      >
+        <app-icon [name]="expanded() ? 'close' : 'maximize'" [size]="16" />
+      </button>
     </div>
   `,
   styles: `
@@ -138,6 +212,44 @@ import { RequestStatus } from '../../core/models';
       border-radius: inherit;
       background: #eef2ea;
       isolation: isolate;
+      cursor: zoom-in;
+    }
+
+    .track-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(8, 15, 30, 0.55);
+      backdrop-filter: blur(3px);
+      animation: scrim-in 0.16s ease-out;
+    }
+
+    .track--expanded {
+      position: fixed;
+      inset: 0;
+      z-index: 310;
+      width: min(1100px, 92vw);
+      height: min(74vh, calc(92vw * 0.656));
+      min-height: 0;
+      margin: auto;
+      border-radius: 22px;
+      box-shadow: 0 40px 90px rgba(8, 15, 30, 0.45);
+      animation: track-pop 0.18s ease-out;
+      cursor: default;
+      background: #f2efe7;
+    }
+
+    @keyframes scrim-in {
+      from {
+        opacity: 0;
+      }
+    }
+
+    @keyframes track-pop {
+      from {
+        opacity: 0;
+        transform: scale(0.97);
+      }
     }
 
     .track__map {
@@ -178,28 +290,34 @@ import { RequestStatus } from '../../core/models';
       stroke-width: 20;
     }
 
+    .route-line__casing {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.92);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .route-line {
+      fill: none;
+      stroke: rgba(242, 84, 45, 0.62);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .route-start {
+      fill: #ffffff;
+      stroke: var(--brand, #f2542d);
+      stroke-width: 3;
+    }
+
     .labels text {
       fill: rgba(16, 26, 44, 0.38);
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-    }
-
-    .route {
-      fill: none;
-      stroke: var(--brand, #f2542d);
-      stroke-width: 5;
-      stroke-linecap: round;
-      stroke-dasharray: 9 11;
-      animation: route-flow 1.4s linear infinite;
-      filter: drop-shadow(0 2px 3px rgba(242, 84, 45, 0.25));
-    }
-
-    @keyframes route-flow {
-      to {
-        stroke-dashoffset: -40;
-      }
     }
 
     .you-ring {
@@ -235,23 +353,34 @@ import { RequestStatus } from '../../core/models';
       }
     }
 
-    .mech-body {
-      fill: var(--ink-900, #101a2c);
+    .scooter__bg {
+      fill: var(--brand, #f2542d);
       stroke: #ffffff;
       stroke-width: 3;
+      filter: drop-shadow(0 4px 7px rgba(16, 26, 44, 0.28));
     }
 
-    .mech-halo {
-      fill: rgba(16, 26, 44, 0.1);
+    .scooter__glyph {
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
-    .mech-icon {
-      fill: #ffffff;
-      transform: translateY(1px);
-    }
-
-    .mech-pin--parked .mech-body {
+    .scooter--parked .scooter__bg {
       fill: #15803d;
+    }
+
+    .scooter__label {
+      fill: var(--ink-900, #101a2c);
+      stroke: #ffffff;
+      stroke-width: 3.5;
+      paint-order: stroke;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      pointer-events: none;
     }
 
     .search-ring circle {
@@ -307,7 +436,7 @@ import { RequestStatus } from '../../core/models';
     .track__eta {
       position: absolute;
       top: 12px;
-      right: 12px;
+      right: 54px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -318,6 +447,35 @@ import { RequestStatus } from '../../core/models';
       font-size: 0.72rem;
       font-weight: 800;
       box-shadow: 0 8px 18px rgba(16, 26, 44, 0.22);
+    }
+
+    .track__expand {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--ink-800, #1f2a3d);
+      box-shadow: 0 4px 14px rgba(16, 26, 44, 0.16);
+      cursor: pointer;
+      z-index: 2;
+      backdrop-filter: blur(8px);
+    }
+
+    .track__expand:hover {
+      color: var(--brand, #f2542d);
+    }
+
+    .track__expand:focus-visible {
+      outline: 2px solid var(--brand, #f2542d);
+      outline-offset: 2px;
     }
 
     .track__card {
@@ -400,12 +558,7 @@ import { RequestStatus } from '../../core/models';
       text-overflow: ellipsis;
     }
 
-    .track--arrived .route {
-      stroke: #15803d;
-    }
-
     @media (prefers-reduced-motion: reduce) {
-      .route,
       .you-pulse,
       .search-ring circle {
         animation: none;
@@ -421,8 +574,29 @@ export class TrackingMap {
   readonly eta = input('');
   readonly phone = input('');
 
-  readonly routePath =
-    'M552 84 C500 96 512 150 466 166 C420 182 404 128 356 150 C308 172 330 238 272 250 C214 262 214 318 150 332';
+  /** Large, in-page map view opened by clicking the map. */
+  readonly expanded = signal(false);
+
+  expand(): void {
+    if (!this.expanded()) this.expanded.set(true);
+  }
+
+  collapse(): void {
+    this.expanded.set(false);
+  }
+
+  toggle(event: Event): void {
+    event.stopPropagation();
+    this.expanded.update((open) => !open);
+  }
+
+  /** Follows the road grid instead of cutting across buildings. */
+  readonly roadPath =
+    'M574 84 L574 120 Q574 128 566 128 L432 128 Q424 128 424 136 L424 238 Q424 246 416 246 L290 246 Q282 246 282 254 L282 376 Q282 384 274 384 L154 384 Q146 384 146 376 L146 340 L150 332';
+
+  /** Idle coverage: a nearby mechanic cruising the block next to the customer. */
+  readonly nearbyPath =
+    'M424 376 Q424 384 416 384 L290 384 Q282 384 282 376 L282 254 Q282 246 290 246 L416 246 Q424 246 424 254 Z';
 
   readonly initials = computed(() => {
     const name = this.mechanicName().trim();

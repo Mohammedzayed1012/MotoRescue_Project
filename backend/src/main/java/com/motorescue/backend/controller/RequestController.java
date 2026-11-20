@@ -144,6 +144,21 @@ public class RequestController {
         }
     }
 
+    @PostMapping("/{id}/review")
+    public ResponseEntity<?> review(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        try {
+            Long riderId = requiredLong(body.get("riderId"), "Rider account is required.");
+            Integer serviceRating = asInt(body.get("serviceRating"));
+            Integer mechanicRating = asInt(body.get("mechanicRating"));
+            String comment = asText(body.get("comment"));
+
+            return ResponseEntity.ok(
+                    requestService.review(id, riderId, serviceRating, mechanicRating, comment));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/assign")
     public ResponseEntity<?> assign(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         try {
@@ -169,6 +184,20 @@ public class RequestController {
         if (value instanceof String text && !text.isBlank()) {
             try {
                 return Long.parseLong(text.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Integer asInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            try {
+                return Integer.parseInt(text.trim());
             } catch (NumberFormatException ignored) {
                 return null;
             }

@@ -128,6 +128,89 @@ public class RequestService {
         return requestRepository.save(request);
     }
 
+    /**
+     * A rider reviews a completed job: how the service was overall and how the
+     * mechanic behaved on site. The mechanic's average rating is refreshed from
+     * all reviewed jobs so the profile stays accurate.
+     */
+    @Transactional
+    public RescueRequest review(Long requestId, Long riderId, Integer serviceRating,
+            Integer mechanicRating, String comment) {
+        RescueRequest request = get(requestId);
+
+        if (riderId == null || !riderId.equals(request.getRiderId())) {
+            throw new RuntimeException("You can only review your own rescue.");
+        }
+
+        if (!RescueRequest.STATUS_COMPLETED.equals(request.getStatus())) {
+            throw new RuntimeException("You can review a rescue once the work is done.");
+        }
+
+        if (request.getReviewedAt() != null) {
+            throw new RuntimeException("This rescue has already been reviewed.");
+        }
+
+        validateRating(serviceRating, "Choose a rating for the service.");
+        validateRating(mechanicRating, "Choose a rating for the mechanic's behaviour.");
+
+        request.setServiceRating(serviceRating);
+        request.setMechanicRating(mechanicRating);
+        request.setReviewComment(normalizeComment(comment));
+        request.setReviewedAt(LocalDateTime.now());
+
+        RescueRequest saved = requestRepository.save(request);
+        refreshMechanicRating(saved.getMechanicId());
+        return saved;
+    }
+
+    private void validateRating(Integer rating, String message) {
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new RuntimeException(message);
+        }
+    }
+
+    private String normalizeComment(String comment) {
+        if (comment == null) {
+            return null;
+        }
+
+        String trimmed = comment.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+
+        return trimmed.length() > 1000 ? trimmed.substring(0, 1000) : trimmed;
+    }
+
+    private void refreshMechanicRating(Long mechanicId) {
+        if (mechanicId == null) {
+            return;
+        }
+
+        User mechanic = userRepository.findById(mechanicId).orElse(null);
+        if (mechanic == null) {
+            return;
+        }
+
+        List<RescueRequest> reviewed = requestRepository
+                .findByMechanicIdOrderByCreatedAtDesc(mechanicId)
+                .stream()
+                .filter(item -> item.getMechanicRating() != null)
+                .toList();
+
+        if (reviewed.isEmpty()) {
+            return;
+        }
+
+        double average = reviewed.stream()
+                .mapToInt(RescueRequest::getMechanicRating)
+                .average()
+                .orElse(0);
+
+        mechanic.setRating(Math.round(average * 10.0) / 10.0);
+        userRepository.save(mechanic);
+    }
+
     @Transactional
     public RescueRequest cancel(Long requestId, Long riderId) {
         RescueRequest request = get(requestId);

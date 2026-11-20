@@ -3,7 +3,6 @@
   [active]="activeTab()"
   [title]="pageTitle()"
   [subtitle]="pageSubtitle()"
-  roleLabel="Rider workspace"
   (activeChange)="setTab($event)"
 >
   @if (activeTab() !== 'request') {
@@ -188,6 +187,23 @@
             </section>
           }
 
+          @if (pendingReview(); as pending) {
+            <section class="card review-prompt">
+              <span class="review-prompt__icon"><app-icon name="star" [size]="22" /></span>
+              <div class="review-prompt__copy">
+                <span class="badge badge--amber">Review pending</span>
+                <h3>How did your last rescue go?</h3>
+                <p>
+                  Rate the service and your mechanic's behaviour. Older rescues can be rated from
+                  rescue history.
+                </p>
+              </div>
+              <button type="button" class="btn btn-primary" (click)="openReview(pending)">
+                Rate rescue
+              </button>
+            </section>
+          }
+
           <div class="quick-actions">
             <button type="button" class="quick" (click)="setTab('request')">
               <span class="quick__icon"><app-icon name="zap" [size]="19" /></span>
@@ -250,6 +266,7 @@
                         <td>{{ entry.mechanic }}</td>
                         <td>{{ entry.amount }}</td>
                         <td>
+<<<<<<< Updated upstream
                           @if (entry.rating) {
                             <span class="stars-inline" [title]="entry.rating + ' out of 5'">
                               @for (star of starOptions; track star) {
@@ -267,6 +284,20 @@
                               (click)="openReviewForHistory(entry)"
                             >
                               Rate
+=======
+                          @if (entry.reviewed) {
+                            <span class="history-rating" [title]="entry.mechanicRating + ' of 5 for mechanic behaviour'">
+                              <span class="history-rating__stars">{{ '★'.repeat(entry.mechanicRating) }}</span>
+                              <span>{{ entry.mechanicRating }}/5</span>
+                            </span>
+                          } @else if (entry.status === 'Completed') {
+                            <button
+                              type="button"
+                              class="btn btn-ghost btn-sm rate-link"
+                              (click)="openReviewById(entry.requestedId)"
+                            >
+                              Rate now
+>>>>>>> Stashed changes
                             </button>
                           } @else {
                             <span class="muted">—</span>
@@ -651,7 +682,11 @@
                   <th>Mechanic</th>
                   <th>Bike</th>
                   <th>Amount</th>
+<<<<<<< Updated upstream
                   <th>Rating</th>
+=======
+                  <th>Your rating</th>
+>>>>>>> Stashed changes
                   <th>Status</th>
                 </tr>
               </thead>
@@ -665,6 +700,7 @@
                     <td>{{ entry.bike }}</td>
                     <td>{{ entry.amount }}</td>
                     <td>
+<<<<<<< Updated upstream
                       @if (entry.rating) {
                         <span class="stars-inline" [title]="entry.rating + ' out of 5'">
                           @for (star of starOptions; track star) {
@@ -682,6 +718,20 @@
                           (click)="openReviewForHistory(entry)"
                         >
                           Rate service
+=======
+                      @if (entry.reviewed) {
+                        <span class="history-rating">
+                          <span class="history-rating__stars">{{ '★'.repeat(entry.mechanicRating) }}</span>
+                          <span>Service {{ entry.serviceRating }}/5 · Mechanic {{ entry.mechanicRating }}/5</span>
+                        </span>
+                      } @else if (entry.status === 'Completed') {
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-sm rate-link"
+                          (click)="openReviewById(entry.requestedId)"
+                        >
+                          Rate now
+>>>>>>> Stashed changes
                         </button>
                       } @else {
                         <span class="muted">—</span>
@@ -793,7 +843,7 @@
         <aside class="profile-side">
           <section class="card card-pad">
             <span class="badge badge--neutral">Account</span>
-            <h3 class="profile-side__title">Rider workspace</h3>
+            <h3 class="profile-side__title">Rider account</h3>
             <dl class="profile-meta">
               <div><dt>Plan</dt><dd>Pay as you go</dd></div>
               <div><dt>Member since</dt><dd>Jan 2026</dd></div>
@@ -814,6 +864,7 @@
     }
   }
 
+<<<<<<< Updated upstream
   @if (reviewTarget(); as target) {
     <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
       <div class="review-modal__backdrop" (click)="closeReview()"></div>
@@ -907,4 +958,103 @@
       </section>
     </div>
   }
+=======
+  @if (reviewOpen() && reviewTarget(); as target) {
+    <div class="review-overlay" (click)="dismissReview()">
+      <section
+        class="review-modal card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="review-modal__head">
+          <div>
+            <span class="badge badge--green"><span class="dot"></span>Rescue complete</span>
+            <h2 id="review-title">How did we do?</h2>
+            <p>{{ target.serviceLabel }} · {{ target.mechanicName || 'Your mechanic' }} · {{ target.reference }}</p>
+          </div>
+          <button type="button" class="icon-btn" (click)="dismissReview()" aria-label="Close review">
+            <app-icon name="close" [size]="17" />
+          </button>
+        </div>
+
+        <form class="review-form" [formGroup]="reviewForm" (ngSubmit)="submitReview()" novalidate>
+          <div class="rating-group">
+            <div class="rating-group__copy">
+              <strong>Service quality</strong>
+              <span>How was the repair and the overall rescue experience?</span>
+            </div>
+            <div class="stars" role="radiogroup" aria-label="Service quality rating">
+              @for (star of reviewStars; track star) {
+                <button
+                  type="button"
+                  class="star-btn"
+                  [class.is-filled]="reviewForm.controls.serviceRating.value >= star"
+                  [attr.aria-label]="star + ' out of 5 for service quality'"
+                  [attr.aria-pressed]="reviewForm.controls.serviceRating.value >= star"
+                  (click)="setRating('serviceRating', star)"
+                >
+                  ★
+                </button>
+              }
+              <span class="stars__label">{{ ratingText(reviewForm.controls.serviceRating.value) }}</span>
+            </div>
+          </div>
+
+          <div class="rating-group">
+            <div class="rating-group__copy">
+              <strong>Mechanic behaviour</strong>
+              <span>Was your mechanic polite, professional, and clear about the work?</span>
+            </div>
+            <div class="stars" role="radiogroup" aria-label="Mechanic behaviour rating">
+              @for (star of reviewStars; track star) {
+                <button
+                  type="button"
+                  class="star-btn"
+                  [class.is-filled]="reviewForm.controls.mechanicRating.value >= star"
+                  [attr.aria-label]="star + ' out of 5 for mechanic behaviour'"
+                  [attr.aria-pressed]="reviewForm.controls.mechanicRating.value >= star"
+                  (click)="setRating('mechanicRating', star)"
+                >
+                  ★
+                </button>
+              }
+              <span class="stars__label">{{ ratingText(reviewForm.controls.mechanicRating.value) }}</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="reviewComment">
+              Anything we should know? <span class="label__optional">Optional</span>
+            </label>
+            <textarea
+              id="reviewComment"
+              class="textarea"
+              formControlName="comment"
+              rows="3"
+              maxlength="1000"
+              placeholder="Tell us what went well or what we can improve."
+            ></textarea>
+          </div>
+
+          <div class="review-form__foot">
+            <button type="button" class="btn btn-ghost" (click)="dismissReview()">Skip for now</button>
+            <button type="submit" class="btn btn-primary" [disabled]="submittingReview()">
+              @if (submittingReview()) {
+                <span class="spinner"></span>
+                Saving…
+              } @else {
+                Submit review
+                <app-icon name="arrow-right" [size]="16" />
+              }
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
+  <app-chat-assistant />
+>>>>>>> Stashed changes
 </app-dashboard-shell>

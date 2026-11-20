@@ -11,7 +11,11 @@ import { interval } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
+<<<<<<< Updated upstream
 import { ApiRescueRequest, ApiUser, PlatformStats, SupportMessage, SupportThread } from '../../core/models';
+=======
+import { ApiRescueRequest, ApiUser, PlatformStats, SupportEscalation } from '../../core/models';
+>>>>>>> Stashed changes
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon, IconName } from '../../shared/icon/icon';
 
@@ -84,6 +88,7 @@ export class AdminDashboard {
   readonly users = signal<ApiUser[]>([]);
   readonly requests = signal<AdminRequest[]>([]);
   readonly stats = signal<PlatformStats | null>(null);
+  readonly escalations = signal<SupportEscalation[]>([]);
 
   /* Rescue desk chat -------------------------------------------------- */
   readonly supportThreads = signal<SupportThread[]>([]);
@@ -310,6 +315,19 @@ export class AdminDashboard {
       .slice(0, 5),
   );
 
+  readonly openEscalations = computed(() =>
+    this.escalations()
+      .filter((item) => item.status === 'OPEN')
+      .map((item) => ({
+        id: item.id,
+        riderName: item.riderName ?? 'Rider',
+        riderPhone: item.riderPhone ?? '',
+        message: item.message,
+        repeatCount: item.repeatCount,
+        age: this.relativeTime(item.createdAt),
+      })),
+  );
+
   constructor() {
     this.loadAll();
 
@@ -370,14 +388,25 @@ export class AdminDashboard {
     });
   }
 
-  approve(mechanic: AdminMechanic): void {
-    this.api.setVerified(mechanic.id, true).subscribe({
+  approve(mechanic: AdminMechanic): void {    this.api.setVerified(mechanic.id, true).subscribe({
       next: () => {
         this.toasts.show(`${mechanic.name} is now a verified partner.`, 'success');
         this.loadAll();
       },
       error: (error: unknown) => {
         this.toasts.show(this.errorMessage(error, 'Could not verify this partner.'), 'error');
+      },
+    });
+  }
+
+  resolveEscalation(escalation: { id: number; riderName: string }): void {
+    this.api.resolveEscalation(escalation.id).subscribe({
+      next: () => {
+        this.toasts.show(`${escalation.riderName}'s escalation marked as resolved.`, 'success');
+        this.loadAll();
+      },
+      error: (error: unknown) => {
+        this.toasts.show(this.errorMessage(error, 'Could not resolve this escalation.'), 'error');
       },
     });
   }
@@ -458,6 +487,7 @@ export class AdminDashboard {
       error: () => this.users.set([]),
     });
 
+<<<<<<< Updated upstream
     this.api.supportThreads().subscribe({
       next: (threads) => {
         this.supportThreads.set(threads);
@@ -590,6 +620,12 @@ export class AdminDashboard {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join('');
+=======
+    this.api.supportEscalations().subscribe({
+      next: (items) => this.escalations.set(items),
+      error: () => this.escalations.set([]),
+    });
+>>>>>>> Stashed changes
   }
 
   private toAdminRequest(request: ApiRescueRequest): AdminRequest {
@@ -655,6 +691,11 @@ export class AdminDashboard {
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours} h`;
     return `${Math.floor(hours / 24)} d`;
+  }
+
+  private relativeTime(value?: string): string {
+    const age = this.age(value);
+    return age === 'Just now' || age === '—' ? age : `${age} ago`;
   }
 
   private errorMessage(error: unknown, fallback: string): string {

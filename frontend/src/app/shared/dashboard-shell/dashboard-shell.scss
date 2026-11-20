@@ -37,18 +37,6 @@
   border-radius: var(--radius-xs);
 }
 
-.role-chip {
-  padding: 4px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--slate-100);
-  color: var(--slate-600);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .sidebar__nav {
   display: flex;
   flex-direction: column;
@@ -239,15 +227,6 @@
   min-width: 0;
 }
 
-.topbar__eyebrow {
-  display: block;
-  color: var(--brand);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
 .topbar__title h1 {
   margin-top: 2px;
   font-size: clamp(1.35rem, 2.4vw, 1.65rem);
@@ -344,10 +323,6 @@
   /* Keep the page title readable on phones; primary actions live in the page. */
   .topbar__slot {
     display: none;
-  }
-
-  .topbar__eyebrow {
-    font-size: 0.6rem;
   }
 
   .topbar__title h1 {

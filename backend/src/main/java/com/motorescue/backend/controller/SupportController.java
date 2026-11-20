@@ -9,11 +9,15 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+<<<<<<< Updated upstream
 import org.springframework.web.bind.annotation.PutMapping;
+=======
+>>>>>>> Stashed changes
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+<<<<<<< Updated upstream
 import com.motorescue.backend.entity.SupportMessage;
 import com.motorescue.backend.entity.SupportThread;
 import com.motorescue.backend.entity.User;
@@ -137,6 +141,73 @@ public class SupportController {
     }
 
     private Long asLong(Object value) {
+=======
+import com.motorescue.backend.entity.SupportEscalation;
+import com.motorescue.backend.entity.User;
+import com.motorescue.backend.repository.SupportEscalationRepository;
+import com.motorescue.backend.repository.UserRepository;
+
+/**
+ * Receives chat handoffs from the rider assistant so the operations team can
+ * call the rider back, and lets the admin console resolve them.
+ */
+@RestController
+@RequestMapping("/api/support/escalations")
+@CrossOrigin(origins = { "http://localhost:4200", "http://127.0.0.1:4200" })
+public class SupportController {
+
+    private final SupportEscalationRepository escalations;
+    private final UserRepository users;
+
+    public SupportController(SupportEscalationRepository escalations, UserRepository users) {
+        this.escalations = escalations;
+        this.users = users;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        Long riderId = asLong(body.get("riderId"));
+        if (riderId == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Rider account is required."));
+        }
+
+        String message = asText(body.get("message"));
+        if (message == null || message.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "A message is required."));
+        }
+
+        SupportEscalation escalation = new SupportEscalation();
+        escalation.setRiderId(riderId);
+        escalation.setMessage(message.length() > 500 ? message.substring(0, 500) : message);
+        escalation.setRepeatCount(asInt(body.get("repeatCount"), 8));
+
+        User rider = users.findById(riderId).orElse(null);
+        if (rider != null) {
+            escalation.setRiderName(rider.getFullName());
+            escalation.setRiderPhone(rider.getPhone());
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(escalations.save(escalation));
+    }
+
+    @GetMapping
+    public List<SupportEscalation> list() {
+        return escalations.findTop25ByOrderByCreatedAtDesc();
+    }
+
+    @PostMapping("/{id}/resolve")
+    public ResponseEntity<?> resolve(@PathVariable Long id) {
+        SupportEscalation escalation = escalations.findById(id).orElse(null);
+        if (escalation == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        escalation.setStatus(SupportEscalation.STATUS_RESOLVED);
+        return ResponseEntity.ok(escalations.save(escalation));
+    }
+
+    private static Long asLong(Object value) {
+>>>>>>> Stashed changes
         if (value instanceof Number number) {
             return number.longValue();
         }
@@ -150,7 +221,26 @@ public class SupportController {
         return null;
     }
 
+<<<<<<< Updated upstream
     private String asText(Object value) {
         return value == null ? null : String.valueOf(value).trim();
+=======
+    private static Integer asInt(Object value, int fallback) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            try {
+                return Integer.parseInt(text.trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static String asText(Object value) {
+        return value == null ? null : String.valueOf(value);
+>>>>>>> Stashed changes
     }
 }

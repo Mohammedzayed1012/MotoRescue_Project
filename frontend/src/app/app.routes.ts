@@ -34,7 +34,7 @@ export const routes: Routes = [
   },
   {
     path: 'mechanic',
-    title: 'Mechanic workspace — MotoRescue',
+    title: 'Mechanic dashboard — MotoRescue',
     canActivate: [authGuard, roleGuard('MECHANIC')],
     loadComponent: () =>
       import('./pages/mechanic-dashboard/mechanic-dashboard').then((m) => m.MechanicDashboard),

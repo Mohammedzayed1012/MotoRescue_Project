@@ -188,6 +188,22 @@
   padding: 11px 18px;
 }
 
+.feed li > div {
+  min-width: 0;
+}
+
+.escalation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.escalation__actions .btn {
+  padding: 4px 10px;
+  font-size: 0.68rem;
+}
+
 .feed__icon {
   display: inline-flex;
   align-items: center;

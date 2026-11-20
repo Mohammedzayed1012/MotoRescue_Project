@@ -89,6 +89,17 @@ public class RescueRequest {
 
     private LocalDateTime cancelledAt;
 
+    /** 1-5 stars for the overall service experience. */
+    private Integer serviceRating;
+
+    /** 1-5 stars for how the mechanic behaved on site. */
+    private Integer mechanicRating;
+
+    @Column(length = 1000)
+    private String reviewComment;
+
+    private LocalDateTime reviewedAt;
+
     public RescueRequest() {
     }
 
@@ -290,6 +301,38 @@ public class RescueRequest {
 
     public void setCancelledAt(LocalDateTime cancelledAt) {
         this.cancelledAt = cancelledAt;
+    }
+
+    public Integer getServiceRating() {
+        return serviceRating;
+    }
+
+    public void setServiceRating(Integer serviceRating) {
+        this.serviceRating = serviceRating;
+    }
+
+    public Integer getMechanicRating() {
+        return mechanicRating;
+    }
+
+    public void setMechanicRating(Integer mechanicRating) {
+        this.mechanicRating = mechanicRating;
+    }
+
+    public String getReviewComment() {
+        return reviewComment;
+    }
+
+    public void setReviewComment(String reviewComment) {
+        this.reviewComment = reviewComment;
+    }
+
+    public LocalDateTime getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public void setReviewedAt(LocalDateTime reviewedAt) {
+        this.reviewedAt = reviewedAt;
     }
 
     @PrePersist

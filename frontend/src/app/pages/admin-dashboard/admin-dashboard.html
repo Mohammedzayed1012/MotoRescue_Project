@@ -3,7 +3,6 @@
   [active]="activeTab()"
   [title]="pageTitle()"
   [subtitle]="pageSubtitle()"
-  roleLabel="Operations console"
   (activeChange)="setTab($event)"
 >
   <button shellActions type="button" class="btn btn-light btn-sm" (click)="exportRequests()">
@@ -136,6 +135,39 @@
         </div>
 
         <aside class="admin-side">
+          @if (openEscalations().length) {
+            <section class="card">
+              <div class="card-head">
+                <h3>Support escalations</h3>
+                <span class="badge badge--amber">{{ openEscalations().length }} open</span>
+              </div>
+              <ul class="feed">
+                @for (item of openEscalations(); track item.id) {
+                  <li>
+                    <span class="feed__icon feed__icon--amber">
+                      <app-icon name="headset" [size]="15" />
+                    </span>
+                    <div class="escalation">
+                      <p>
+                        <strong>{{ item.riderName }}</strong> sent “{{ item.message }}”
+                        {{ item.repeatCount }} times
+                      </p>
+                      <span>{{ item.age }}</span>
+                      <div class="escalation__actions">
+                        @if (item.riderPhone) {
+                          <a class="btn btn-soft btn-sm" [href]="'tel:' + item.riderPhone">Call rider</a>
+                        }
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="resolveEscalation(item)">
+                          Mark resolved
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
           <section class="card">
             <div class="card-head">
               <h3>Activity</h3>

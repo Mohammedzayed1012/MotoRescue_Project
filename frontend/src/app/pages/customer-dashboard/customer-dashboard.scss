@@ -968,6 +968,199 @@
   margin-top: 14px;
 }
 
+/* Reviews -------------------------------------------------------------------- */
+
+.review-prompt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border: 1px solid #f3d3a3;
+  background: linear-gradient(135deg, #fffaf0, #fff3dd);
+}
+
+.review-prompt__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: #fde7c4;
+  color: #b96a05;
+}
+
+.review-prompt__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.review-prompt__copy h3 {
+  margin: 8px 0 3px;
+  font-size: 1.05rem;
+}
+
+.review-prompt__copy p {
+  color: var(--slate-600);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.review-prompt .btn {
+  flex: 0 0 auto;
+}
+
+.review-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(12, 20, 34, 0.52);
+  backdrop-filter: blur(3px);
+}
+
+.review-modal {
+  width: min(580px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.review-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.review-modal__head h2 {
+  margin: 9px 0 4px;
+  font-size: 1.35rem;
+}
+
+.review-modal__head p {
+  color: var(--slate-500);
+  font-size: 0.78rem;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px 24px;
+}
+
+.rating-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  background: var(--slate-50);
+}
+
+.rating-group__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rating-group__copy strong {
+  font-size: 0.86rem;
+}
+
+.rating-group__copy span {
+  color: var(--slate-500);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.stars {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.star-btn {
+  padding: 0 1px;
+  border: 0;
+  background: transparent;
+  color: var(--slate-300);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.star-btn:hover,
+.star-btn:focus-visible {
+  color: #f5a524;
+  transform: translateY(-1px);
+}
+
+.star-btn.is-filled {
+  color: #f5a524;
+  text-shadow: 0 2px 6px rgba(245, 165, 36, 0.3);
+}
+
+.stars__label {
+  min-width: 62px;
+  margin-left: 7px;
+  color: var(--slate-500);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.review-form__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.history-rating {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.history-rating__stars {
+  color: #f5a524;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+}
+
+.history-rating > span:last-child {
+  color: var(--slate-500);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.rate-link {
+  height: auto;
+  padding: 0;
+  color: var(--brand-strong);
+  font-size: 0.74rem;
+}
+
+.muted {
+  color: var(--slate-400);
+}
+
 /* Responsive ----------------------------------------------------------------- */
 
 @media (max-width: 1180px) {
@@ -1084,6 +1277,40 @@
   .empty-rescue {
     flex-direction: column;
     padding: 22px;
+  }
+
+  .review-prompt {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .review-prompt .btn {
+    width: 100%;
+  }
+
+  .review-overlay {
+    padding: 12px;
+  }
+
+  .review-modal {
+    max-height: calc(100vh - 24px);
+  }
+
+  .review-modal__head,
+  .review-form {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .rating-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .stars {
+    width: 100%;
   }
 }
 

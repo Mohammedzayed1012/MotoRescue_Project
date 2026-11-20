@@ -7,6 +7,7 @@ import {
   ApiUser,
   Bike,
   CreateRequestPayload,
+<<<<<<< Updated upstream
   CreateReviewPayload,
   OpenSupportThreadPayload,
   PlatformStats,
@@ -14,6 +15,12 @@ import {
   SupportMessage,
   SupportSenderRole,
   SupportThread,
+=======
+  EscalateSupportPayload,
+  PlatformStats,
+  ReviewRequestPayload,
+  SupportEscalation,
+>>>>>>> Stashed changes
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -78,6 +85,10 @@ export class ApiService {
     return this.http.post<ApiRescueRequest>(`${this.base}/requests/${id}/cancel`, { riderId });
   }
 
+  reviewRequest(id: number, payload: ReviewRequestPayload): Observable<ApiRescueRequest> {
+    return this.http.post<ApiRescueRequest>(`${this.base}/requests/${id}/review`, payload);
+  }
+
   assignRequest(id: number, mechanicId?: number): Observable<ApiRescueRequest> {
     return this.http.post<ApiRescueRequest>(`${this.base}/requests/${id}/assign`, {
       mechanicId: mechanicId ?? null,
@@ -126,6 +137,7 @@ export class ApiService {
     return this.http.put<ApiUser>(`${this.base}/users/${id}/verify`, { verified });
   }
 
+<<<<<<< Updated upstream
   /* Rescue desk chat -------------------------------------------------- */
 
   openSupportThread(payload: OpenSupportThreadPayload): Observable<SupportThread> {
@@ -171,5 +183,17 @@ export class ApiService {
 
   resolveSupportThread(threadId: number): Observable<SupportThread> {
     return this.http.post<SupportThread>(`${this.base}/support/threads/${threadId}/resolve`, {});
+=======
+  escalateSupport(payload: EscalateSupportPayload): Observable<SupportEscalation> {
+    return this.http.post<SupportEscalation>(`${this.base}/support/escalations`, payload);
+  }
+
+  supportEscalations(): Observable<SupportEscalation[]> {
+    return this.http.get<SupportEscalation[]>(`${this.base}/support/escalations`);
+  }
+
+  resolveEscalation(id: number): Observable<SupportEscalation> {
+    return this.http.post<SupportEscalation>(`${this.base}/support/escalations/${id}/resolve`, {});
+>>>>>>> Stashed changes
   }
 }

@@ -36,7 +36,6 @@ export class DashboardShell {
   readonly active = input.required<string>();
   readonly title = input('Overview');
   readonly subtitle = input('');
-  readonly roleLabel = input('Workspace');
 
   readonly activeChange = output<string>();
   readonly menuOpen = signal(false);

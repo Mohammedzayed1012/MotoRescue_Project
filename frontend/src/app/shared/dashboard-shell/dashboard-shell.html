@@ -13,7 +13,6 @@
       <a routerLink="/" class="sidebar__brand" aria-label="MotoRescue home">
         <app-logo size="sm" />
       </a>
-      <span class="role-chip">{{ roleLabel() }}</span>
     </div>
 
     <nav class="sidebar__nav">
@@ -73,7 +72,6 @@
       </button>
 
       <div class="topbar__title">
-        <span class="topbar__eyebrow">{{ roleLabel() }}</span>
         <h1>{{ title() }}</h1>
         @if (subtitle()) {
           <p>{{ subtitle() }}</p>

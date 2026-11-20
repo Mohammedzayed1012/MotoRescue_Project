@@ -31,7 +31,6 @@ import { Icon } from '../icon/icon';
           <path d="M306 0v320" />
           <path d="M0 282h420" />
         </g>
-        <path class="map__route" d="M84 252c34 0 30-52 62-52s34 58 74 58 38-66 78-66 44 30 74 30" />
       </svg>
 
       <span class="map__pin map__pin--user" aria-hidden="true">
@@ -96,22 +95,6 @@ import { Icon } from '../icon/icon';
 
     .map__streets path:nth-child(2) {
       stroke-width: 18;
-    }
-
-    .map__route {
-      fill: none;
-      stroke: var(--brand);
-      stroke-width: 4;
-      stroke-linecap: round;
-      stroke-dasharray: 7 9;
-      opacity: 0.9;
-      animation: route-flow 1.6s linear infinite;
-    }
-
-    @keyframes route-flow {
-      to {
-        stroke-dashoffset: -32;
-      }
     }
 
     .map__pin {

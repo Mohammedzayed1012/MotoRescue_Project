@@ -143,6 +143,17 @@ export interface ApiRescueRequest {
   arrivedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  serviceRating?: number;
+  mechanicRating?: number;
+  reviewComment?: string;
+  reviewedAt?: string;
+}
+
+export interface ReviewRequestPayload {
+  riderId: number;
+  serviceRating: number;
+  mechanicRating: number;
+  comment?: string;
 }
 
 export interface Review {
@@ -243,4 +254,21 @@ export interface AddBikePayload {
   regNo: string;
   year: string;
   odometer?: string;
+}
+
+export interface SupportEscalation {
+  id: number;
+  riderId: number;
+  riderName: string | null;
+  riderPhone: string | null;
+  message: string;
+  repeatCount: number;
+  status: 'OPEN' | 'RESOLVED';
+  createdAt: string;
+}
+
+export interface EscalateSupportPayload {
+  riderId: number;
+  message: string;
+  repeatCount: number;
 }

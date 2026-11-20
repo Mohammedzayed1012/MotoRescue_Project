@@ -18,6 +18,7 @@ import { ApiRescueRequest, ApiUser, Bike, RequestStatus, Review } from '../../co
 import { DashboardShell, NavItem } from '../../shared/dashboard-shell/dashboard-shell';
 import { Icon, IconName } from '../../shared/icon/icon';
 import { TrackingMap } from '../../shared/tracking-map/tracking-map';
+import { ChatAssistant } from '../../shared/chat-assistant/chat-assistant';
 
 type RiderTab = 'overview' | 'request' | 'bikes' | 'history' | 'profile';
 
@@ -36,8 +37,15 @@ interface HistoryRow {
   bike: string;
   amount: string;
   status: 'Completed' | 'Cancelled';
+<<<<<<< Updated upstream
   rating: number | null;
   canReview: boolean;
+=======
+  requestedId: number;
+  reviewed: boolean;
+  serviceRating: number;
+  mechanicRating: number;
+>>>>>>> Stashed changes
 }
 
 const ACTIVE_STATUSES: RequestStatus[] = ['SEARCHING', 'EN_ROUTE', 'ARRIVED'];
@@ -45,7 +53,7 @@ const ACTIVE_STATUSES: RequestStatus[] = ['SEARCHING', 'EN_ROUTE', 'ARRIVED'];
 @Component({
   selector: 'app-customer-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, DashboardShell, Icon, TrackingMap],
+  imports: [ReactiveFormsModule, DashboardShell, Icon, TrackingMap, ChatAssistant],
   templateUrl: './customer-dashboard.html',
   styleUrl: './customer-dashboard.scss',
 })
@@ -76,6 +84,11 @@ export class CustomerDashboard {
   readonly historyQuery = signal('');
   readonly locating = signal(false);
   readonly liveLocation = signal(false);
+  readonly reviewOpen = signal(false);
+  readonly reviewTarget = signal<ApiRescueRequest | null>(null);
+  readonly submittingReview = signal(false);
+
+  readonly reviewStars = [1, 2, 3, 4, 5];
 
   /* Reviews ------------------------------------------------------------ */
   readonly reviews = signal<Review[]>([]);
@@ -110,6 +123,7 @@ export class CustomerDashboard {
   readonly history = computed<HistoryRow[]>(() =>
     this.requests()
       .filter((item) => item.status === 'COMPLETED' || item.status === 'CANCELLED')
+<<<<<<< Updated upstream
       .map((item) => {
         const review = this.reviewsByRequest().get(item.id) ?? null;
         return {
@@ -140,6 +154,31 @@ export class CustomerDashboard {
           item.id !== dismissed,
       ) ?? null
     );
+=======
+      .map((item) => ({
+        id: item.reference,
+        date: this.formatDate(item.completedAt ?? item.cancelledAt ?? item.createdAt),
+        service: item.serviceLabel ?? 'Roadside assistance',
+        mechanic: item.mechanicName ?? '—',
+        bike: item.bikeLabel ?? '—',
+        amount: item.quote ?? '—',
+        status: item.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
+        requestedId: item.id,
+        reviewed: !!item.reviewedAt,
+        serviceRating: item.serviceRating ?? 0,
+        mechanicRating: item.mechanicRating ?? 0,
+      })),
+  );
+
+  /** Only the latest completed rescue is prompted; older jobs can be rated from history. */
+  readonly latestCompleted = computed(
+    () => this.requests().find((item) => item.status === 'COMPLETED') ?? null,
+  );
+
+  readonly pendingReview = computed(() => {
+    const latest = this.latestCompleted();
+    return latest && !latest.reviewedAt ? latest : null;
+>>>>>>> Stashed changes
   });
 
   readonly recentHistory = computed(() => this.history().slice(0, 3));
@@ -176,6 +215,12 @@ export class CustomerDashboard {
     phone: [this.auth.user()?.phone ?? '', [Validators.required]],
     smsUpdates: [true],
     emailReceipts: [true],
+  });
+
+  readonly reviewForm = this.fb.nonNullable.group({
+    serviceRating: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
+    mechanicRating: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
+    comment: ['', [Validators.maxLength(1000)]],
   });
 
   readonly greeting = computed(() => {
@@ -353,6 +398,7 @@ export class CustomerDashboard {
     });
   }
 
+<<<<<<< Updated upstream
   openReview(request?: ApiRescueRequest | null): void {
     const target = request ?? this.pendingReview();
     if (!target) return;
@@ -420,17 +466,100 @@ export class CustomerDashboard {
         },
         error: (error: unknown) => {
           this.reviewSubmitting.set(false);
+=======
+  openReview(request: ApiRescueRequest): void {
+    if (request.status !== 'COMPLETED' || request.reviewedAt) return;
+
+    this.reviewTarget.set(request);
+    this.reviewForm.reset({ serviceRating: 0, mechanicRating: 0, comment: '' });
+    this.reviewOpen.set(true);
+  }
+
+  dismissReview(): void {
+    this.reviewOpen.set(false);
+    this.reviewTarget.set(null);
+    this.reviewForm.reset({ serviceRating: 0, mechanicRating: 0, comment: '' });
+  }
+
+  openReviewById(id: number): void {
+    const target = this.requests().find((item) => item.id === id);
+    if (target) {
+      this.openReview(target);
+    }
+  }
+
+  setRating(field: 'serviceRating' | 'mechanicRating', value: number): void {
+    const control = this.reviewForm.controls[field];
+    control.setValue(value);
+    control.markAsTouched();
+  }
+
+  submitReview(): void {
+    if (this.submittingReview()) return;
+
+    const target = this.reviewTarget();
+    const riderId = this.auth.user()?.id;
+    if (!target || !riderId) {
+      this.toasts.show('Please log in again to leave a review.', 'error');
+      return;
+    }
+
+    const value = this.reviewForm.getRawValue();
+    if (!value.serviceRating || !value.mechanicRating) {
+      this.toasts.show('Choose a star rating for the service and your mechanic.', 'error');
+      return;
+    }
+
+    this.submittingReview.set(true);
+
+    this.api
+      .reviewRequest(target.id, {
+        riderId,
+        serviceRating: value.serviceRating,
+        mechanicRating: value.mechanicRating,
+        comment: value.comment.trim(),
+      })
+      .subscribe({
+        next: () => {
+          this.submittingReview.set(false);
+          this.reviewOpen.set(false);
+          this.reviewTarget.set(null);
+          this.reviewForm.reset({ serviceRating: 0, mechanicRating: 0, comment: '' });
+          this.toasts.show('Thanks for the review. It helps us keep rescue quality high.', 'success');
+          this.loadRequests();
+        },
+        error: (error: unknown) => {
+          this.submittingReview.set(false);
+>>>>>>> Stashed changes
           this.toasts.show(this.errorMessage(error, 'Could not save your review.'), 'error');
         },
       });
   }
 
+<<<<<<< Updated upstream
   ratingWord(value: number): string {
     return ['Tap to rate', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][value] ?? 'Tap to rate';
   }
 
   reviewFor(requestId: number): Review | null {
     return this.reviewsByRequest().get(requestId) ?? null;
+=======
+  ratingText(value: number | undefined): string {
+    switch (value) {
+      case 1:
+        return 'Poor';
+      case 2:
+        return 'Fair';
+      case 3:
+        return 'Good';
+      case 4:
+        return 'Very good';
+      case 5:
+        return 'Excellent';
+      default:
+        return 'Tap to rate';
+    }
+>>>>>>> Stashed changes
   }
 
   callSupport(): void {
@@ -634,8 +763,8 @@ export class CustomerDashboard {
         this.requests.set(requests);
         this.loading.set(false);
 
-        const after = this.request();
-        if (before && after && before.id === after.id && before.status !== after.status) {
+        const after = before ? requests.find((item) => item.id === before.id) : undefined;
+        if (before && after && after.status !== before.status) {
           if (after.status === 'EN_ROUTE') {
             this.toasts.show(
               `${after.mechanicName ?? 'Your mechanic'} accepted your request and is on the way.`,
@@ -644,18 +773,26 @@ export class CustomerDashboard {
           } else if (after.status === 'ARRIVED') {
             this.toasts.show('Your mechanic has arrived at your location.', 'success');
           } else if (after.status === 'COMPLETED') {
+<<<<<<< Updated upstream
             this.toasts.show(
               'Rescue completed. Please rate the service and your mechanic.',
               'success',
             );
+=======
+            this.toasts.show('Rescue completed. How did the service and your mechanic do?', 'success');
+            this.openReview(after);
+>>>>>>> Stashed changes
           }
         }
 
-        if (!before && after && after.status === 'EN_ROUTE') {
-          this.toasts.show(
-            `${after.mechanicName ?? 'Your mechanic'} accepted your request and is on the way.`,
-            'success',
-          );
+        if (!before) {
+          const onTheWay = requests.find((item) => item.status === 'EN_ROUTE');
+          if (onTheWay) {
+            this.toasts.show(
+              `${onTheWay.mechanicName ?? 'Your mechanic'} accepted your request and is on the way.`,
+              'success',
+            );
+          }
         }
       },
       error: () => {
